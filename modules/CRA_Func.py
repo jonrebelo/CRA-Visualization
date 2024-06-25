@@ -3,8 +3,48 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 
+def fetch_data():
+    df= pd.read_csv('data/retail_loan_hmda_bank_total_2021.csv')
+    df_inside = pd.read_csv('data/retail_loan_hmda_bank_inside_2021.csv')
+    return df, df_inside
 
-df = pd.read_csv('retail_loan_hmda_bank_total_2021.csv')
+df = fetch_data()
+
+def fetch_data():
+    df = pd.read_csv('data/retail_loan_hmda_bank_total_2021.csv')
+    df_inside = pd.read_csv('data/retail_loan_hmda_bank_inside_2021.csv')
+    return df, df_inside
+
+def plot_loan_orig_comparison(df, df_inside, id_rssd):
+    # Filter the DataFrames based on the id_rssd
+    df_total_filtered = df[df['id_rssd'] == id_rssd]
+    df_inside_filtered = df_inside[df_inside['id_rssd'] == id_rssd]
+
+    # Check if id_rssd is found in df_inside and print the result
+    if not df_inside_filtered.empty:
+        total_loan_orig_inside = df_inside_filtered['Loan_Orig_Inside'].sum()
+        print(f"id_rssd {id_rssd} found in df_inside with Loan_Orig_Inside: {total_loan_orig_inside}")
+    else:
+        total_loan_orig_inside = 0
+        print(f"id_rssd {id_rssd} not found in df_inside")
+
+    # Aggregate the total Loan_Orig
+    total_loan_orig = df_total_filtered['Loan_Orig'].sum()
+
+    # Create a DataFrame for plotting
+    comparison_df = pd.DataFrame({
+        'Category': ['Total Loan Originated', 'Loan Originated Inside'],
+        'Count': [total_loan_orig, total_loan_orig_inside]
+    })
+
+    # Create the bar graph
+    fig = px.bar(comparison_df, x='Category', y='Count', title='Comparison of Loan Originations')
+
+    # Update the labels of the axes
+    fig.update_xaxes(title_text='Category')
+    fig.update_yaxes(title_text='Count of Loans Originated')
+
+    return fig
 
 def get_bank_info(id_rssd):
     pd.set_option('display.max_rows', None)  # display all rows
