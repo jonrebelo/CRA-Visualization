@@ -20,14 +20,14 @@ conda install streamlit st_aggrid pandas plotly
 ### Functionality
 The application is built with Streamlit and provides an interactive interface for analyzing CRA data. It allows users to select a bank from a dropdown menu and then choose which graphs and tables to display from a multi-select dropdown menu. The options include:
 
-Loan Amount Data Graph
-Loan Originated Data Graph
-Loans by Location Graph
-Loan Data Table
-Census Income Data Table
-Borrower Income Data Table
-Combined Income Data Table
-The selected graphs and tables are displayed in the Streamlit application. The graphs are created using Plotly and the tables are displayed using Ag-Grid.
+-Loan Amount Data Graph
+-Loan Originated Data Graph
+-Loans by Location Graph
+-Loan Data Table
+-Census Income Data Table
+-Borrower Income Data Table
+-Combined Income Data Table
+-The selected graphs and tables are displayed in the Streamlit application. The graphs are created using Plotly and the tables are displayed using Ag-Grid.
 
 ![Screenshot 1](/screenshots/Screenshot.png)
 ![Screenshot 2](/screenshots/Screenshot2.png)
