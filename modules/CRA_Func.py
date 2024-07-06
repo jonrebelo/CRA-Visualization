@@ -1,349 +1,192 @@
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import streamlit as st
+import polars as pl
+from sqlalchemy import create_engine
 
+def create_db_connection():
+    # Create a connection engine to the SQLite database
+    return create_engine('sqlite:///my_database.db')
 
-def fetch_data():
-    df= pd.read_csv('data/retail_loan_hmda_bank_total_2021.csv')
-    df_inside = pd.read_csv('data/retail_loan_hmda_bank_inside_2021.csv')
-    return df, df_inside
+def fetch_bank_names(engine):
+    # Query all bank names from the PE_Table
+    query = "SELECT DISTINCT bank_name FROM PE_Table;"
+    # Use polars to read the SQL query
+    df = pl.read_database(query=query, connection=engine.connect())
+    return df['bank_name'].unique().to_list()
 
-df = fetch_data()
+def fetch_years_for_bank(engine, selected_bank):
+    # Query the id_rssd for the selected bank from the PE_Table
+    query = f"SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}';"
+    df = pl.read_database(query=query, connection=engine.connect())
+    id_rssd = df['id_rssd'][0]
+    # Query the available years for the selected bank from the Retail_Table
+    query = f"SELECT DISTINCT ActivityYear FROM Retail_Table WHERE id_rssd = {id_rssd};"
+    df = pl.read_database(query=query, connection=engine.connect())
+    return df['ActivityYear'].unique().to_list()
 
-def fetch_data():
-    df = pd.read_csv('data/retail_loan_hmda_bank_total_2021.csv')
-    df_inside = pd.read_csv('data/retail_loan_hmda_bank_inside_2021.csv')
-    return df, df_inside
+def fetch_assessment_area(engine, selected_bank, selected_year):
+    query = f"SELECT MD_Code, MSA_Code, State_Code, County_Code FROM Retail_Table WHERE id_rssd = (SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}') AND ActivityYear = {selected_year};"
+    df = pl.read_database(query, engine)
+    print(f"Initial query result: {df}")
 
-def plot_loan_orig_comparison(df, df_inside, id_rssd):
-    # Filter the DataFrames based on the id_rssd
-    df_total_filtered = df[df['id_rssd'] == id_rssd]
-    df_inside_filtered = df_inside[df_inside['id_rssd'] == id_rssd]
+    assessment_areas = {}
 
-    # Check if id_rssd is found in df_inside and print the result
-    if not df_inside_filtered.empty:
-        total_loan_orig_inside = df_inside_filtered['Loan_Orig_Inside'].sum()
-        print(f"id_rssd {id_rssd} found in df_inside with Loan_Orig_Inside: {total_loan_orig_inside}")
-    else:
-        total_loan_orig_inside = 0
-        print(f"id_rssd {id_rssd} not found in df_inside")
+    for row in df.iter_rows():
+        md_code, msa_code, state_code, county_code = row
+        lookup_method = None  # Reset lookup_method at the start of each loop iteration
+        print(f"Lookup method reset to: {lookup_method}")
+        skip_row = False  # Reset skip_row at the start of each loop iteration
 
-    # Aggregate the total Loan_Orig
-    total_loan_orig = df_total_filtered['Loan_Orig'].sum()
+        # Look up by MD_Code first
+        if md_code is not None and md_code != 'NA':
+                print(f"MD_Code: {md_code}")
+                for table in ['2024 tracts', '2022-2023 tracts']:
+                    query = f"SELECT `MSA/MD name` FROM `{table}` WHERE `MSA/MD Code` = '{md_code}';"
+                    df = pl.read_database(query, engine)
+                    if df.height != 0:
+                        area_name = df['MSA/MD name'][0]
+                        lookup_method = 'md'
+                        assessment_areas[area_name] = {'codes': (md_code, msa_code, state_code, county_code, 'md')}
+                        print(f"Used MD_Code {md_code} to look up MSA/MD name {area_name}. Lookup method: {lookup_method}")
+                        skip_row = True  # Set skip_row to True if MD_Code lookup was successful
+                        break
 
-    # Create a DataFrame for plotting
-    comparison_df = pd.DataFrame({
-        'Category': ['Total Loan Originated', 'Loan Originated Inside'],
-        'Count': [total_loan_orig, total_loan_orig_inside]
-    })
+        # If MD_Code lookup was successful, skip the rest of the current row
+        if skip_row:
+            print(f"Skipping row due to successful MD_Code lookup. Current lookup method: {lookup_method}")
+            continue
 
-    # Create the bar graph
-    fig = px.bar(comparison_df, x='Category', y='Count', title='Comparison of Loan Originations')
+        # If MD_Code lookup failed, try MSA_Code
+        if msa_code is not None and msa_code != 'NA':
+                print(f"MSA_Code: {msa_code}")
+                for table in ['2024 tracts', '2022-2023 tracts']:
+                    query = f"SELECT `MSA/MD name` FROM `{table}` WHERE `MSA/MD Code` = '{msa_code}';"
+                    df = pl.read_database(query, engine)
+                    if df.height != 0:
+                        area_name = df['MSA/MD name'][0]
+                        lookup_method = 'msa' 
+                        assessment_areas[area_name] = {'codes': (md_code, msa_code, state_code, county_code, 'msa')}
+                        print(f"Used MSA_Code {msa_code} to look up MSA/MD name {area_name}. Lookup method: {lookup_method}")
+                        break
 
-    # Update the labels of the axes
-    fig.update_xaxes(title_text='Category')
-    fig.update_yaxes(title_text='Count of Loans Originated')
+        print(f"After MSA_Code lookup, current lookup method: {lookup_method}")
 
-    return fig
+        # If both MD_Code and MSA_Code lookups failed, try State_Code and County_Code
+        if lookup_method != 'md' and lookup_method != 'msa' and str(state_code).isdigit() and str(county_code).isdigit():
+            state_code, county_code = map(int, (state_code, county_code))
+            print(f"Looking up by State_Code: {state_code} and County_Code: {county_code}")
+            for table in ['2024 tracts', '2022-2023 tracts']:
+                query = f"SELECT `County name`, `State` FROM `{table}` WHERE `State code` = {state_code} AND `County code` = {county_code};"
+                df = pl.read_database(query, engine)
+                if df.height != 0:
+                    area_name = f"{df['County name'][0]}, {df['State'][0]}"
+                    lookup_method = 'state_county' 
+                    assessment_areas[area_name] = {'codes': (md_code, msa_code, state_code, county_code, 'state_county')}
+                    print(f"Used State_Code {state_code} and County_Code {county_code} to look up MSA/MD name {area_name}. Lookup method: {lookup_method}")
 
-def get_bank_info(id_rssd):
-    pd.set_option('display.max_rows', None)  # display all rows
-    bank_data = df[df['id_rssd'] == id_rssd]
-    bank_data = bank_data.loc[:, (bank_data != 0).any(axis=0)]
-    return bank_data
+        print(f"After State_Code and County_Code lookup, current lookup method: {lookup_method}")
 
+    if not assessment_areas:
+        print("No matching records found")
+        return None
 
-def plot_loans_by_location(df, id_rssd):
-    # Filter the DataFrame based on the id_rssd
-    df = df[df['id_rssd'] == id_rssd]
+    print(f"Assessment areas: {assessment_areas}")
+    return assessment_areas
 
-    # Create a new column that combines the 'State_Code' and 'County_Code' columns
-    df['Location'] = df['State_Code'].astype(str) + '/' + df['County_Code'].astype(str)
+def fetch_loan_data_loan_dist(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code):
 
-    # Group by the new column and sum the 'Loan_Orig' column
-    location_loan_orig = df.groupby('Location')['Loan_Orig'].sum().reset_index()
+    # Print the values of the variables
+    print(f"Engine: {engine}")
+    print(f"Selected bank: {selected_bank}")
+    print(f"Selected year: {selected_year}")
+    print(f"MD Code: {md_code}")
+    print(f"MSA Code: {msa_code}")
+    print(f"Selected area: {selected_area}")
+    print(f"State Code: {state_code}")
+    print(f"County Code: {county_code}")
+    print(f"Lookup method: {lookup_method}")
 
-    # Sort the data by 'Loan_Orig' in descending order
-    location_loan_orig = location_loan_orig.sort_values('Loan_Orig', ascending=False)
+    # Query the loan data for the selected bank, year, and assessment area from the Retail_Table
+    if lookup_method == 'md':
+        print("Using MD Code for lookup")
+        query = f"""
+        SELECT 
+            Amt_Orig_SFam_Closed, 
+            Amt_Orig_SFam_Open, 
+            Amt_Orig_Mfam, 
+            SF_Amt_Orig, 
+            SB_Amt_Orig, 
+            Amt_Orig 
+        FROM Retail_Table 
+        WHERE 
+            id_rssd = (SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}') 
+            AND ActivityYear = {selected_year} 
+            AND MD_Code = '{md_code}';
+        """
+    elif lookup_method == 'msa':
+        print("Using MSA Code for lookup")
+        query = f"""
+        SELECT 
+            Amt_Orig_SFam_Closed, 
+            Amt_Orig_SFam_Open, 
+            Amt_Orig_Mfam, 
+            SF_Amt_Orig, 
+            SB_Amt_Orig, 
+            Amt_Orig 
+        FROM Retail_Table 
+        WHERE 
+            id_rssd = (SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}') 
+            AND ActivityYear = {selected_year} 
+            AND MSA_Code = '{msa_code}';
+        """
+    else:  # lookup_method == 'state_county'
+        print("Using State and County Code for lookup")
+        query = f"""
+        SELECT 
+            Amt_Orig_SFam_Closed, 
+            Amt_Orig_SFam_Open, 
+            Amt_Orig_Mfam, 
+            SF_Amt_Orig, 
+            SB_Amt_Orig, 
+            Amt_Orig 
+        FROM Retail_Table 
+        WHERE 
+            id_rssd = (SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}') 
+            AND ActivityYear = {selected_year} 
+            AND State_Code = {state_code} AND County_Code = {county_code};
+        """
+    df = pl.read_database(query, engine)
 
-    # Calculate and print the total loans originated
-    total_loans_originated = location_loan_orig['Loan_Orig'].sum()
-    print(f"Total Loans Originated: {total_loans_originated}")
+    # Print the first few rows of the DataFrame
+    print(df.head())
 
-    # Create the bar graph
-    fig = px.bar(location_loan_orig, x='Location', y='Loan_Orig', title='Purchase Loans Originated by Location')
+    return df
 
-    # Update the labels of the axes
-    fig.update_xaxes(title_text='Census Tract')
-    fig.update_yaxes(title_text='Loans Originated')
-
-    return fig
-
-def calculate_loan_data(df, id_rssd):
-    # Filter the DataFrame based on the id_rssd
-    df = df[df['id_rssd'] == id_rssd]
-
-    # Create a new DataFrame with 'Loan Type' and 'Amounts' columns
-    loan_types = ['1-4 Family', 'Multifamily']
-    amount_columns = ['Amt_Orig_SFam', 'Amt_Orig_MFam']
-    amounts = [df[col].sum() for col in amount_columns]
-    data = { 'Loan Type': loan_types, 'Amounts': amounts }
-    loan_data = pd.DataFrame(data)
-
-    # Add a third column for percentages
-    total = loan_data['Amounts'].sum()
-    loan_data['Percentage'] = (loan_data['Amounts'] / total * 100).round(2)
-
-    # Add a third row for totals
-    totals = {'Loan Type': 'Total', 'Amounts': total, 'Percentage': 100.0}
-    loan_data = loan_data.append(totals, ignore_index=True)
-
-    return loan_data
-
-
-def calculate_census_income_data(df, id_rssd):
-    # Filter the DataFrame based on the id_rssd
-    df = df[df['id_rssd'] == id_rssd]
-
-    # Define the categories and corresponding columns
-    income_categories = ['Low', 'Moderate', 'Middle', 'Upper', 'Unknown']
-    loan_orig_columns = ['Loan_Orig_TILow','Loan_Orig_TIMod', 'Loan_Orig_TIMid','Loan_Orig_TIUpp','Loan_Orig_TIUnk']
-    loan_amt_columns = ['Amt_Orig_TILow', 'Amt_Orig_TIMod', 'Amt_Orig_TIMid', 'Amt_Orig_TIUpp', 'Amt_Orig_TIUnk']
-
-    # Calculate the sums for each category
-    loan_orig_sums = [df[col].sum() for col in loan_orig_columns]
-    loan_amt_sums = [df[col].sum() for col in loan_amt_columns]
-
-    # Calculate the total sums
-    total_loan_orig = sum(loan_orig_sums)
-    total_loan_amt = sum(loan_amt_sums)
-
-    # Calculate the percentages
-    loan_orig_percents = [round(sum_ / total_loan_orig * 100 , 2) for sum_ in loan_orig_sums]
-    loan_amt_percents = [round(sum_ / total_loan_amt * 100 , 2) for sum_ in loan_amt_sums]
-
-    # Create the DataFrame
-    data = {
-        'Income Category': income_categories + ['Total'],
-        'Loans Originated': loan_orig_sums + [total_loan_orig],
-        'Percentage of Loans Originated': loan_orig_percents + [100.0],
-        'Total Loan Amounts': loan_amt_sums + [total_loan_amt],
-        'Percentage of Total Loan Amounts': loan_amt_percents + [100.0]
+def create_loan_distribution_graph(df):
+    # Calculate the amount for each loan type
+    loan_types = {
+        '1-4 Family Closed': df['Amt_Orig_SFam_Closed'].sum(),
+        '1-4 Family Open': df['Amt_Orig_SFam_Open'].sum(),
+        'Multi-Family': df['Amt_Orig_Mfam'].sum(),
+        'Farm Loans': df['SF_Amt_Orig'].sum(),
+        'Small Business Loans': df['SB_Amt_Orig'].sum(),
+        'Other': df['Amt_Orig'].sum() - df[['Amt_Orig_SFam_Closed', 'Amt_Orig_SFam_Open', 'Amt_Orig_Mfam', 'SF_Amt_Orig', 'SB_Amt_Orig']].sum(axis=1),
+        'Total': df['Amt_Orig'].sum()
     }
-    census_income_data = pd.DataFrame(data)
 
-    return census_income_data
-
-def calculate_bor_income_data(df, id_rssd):
-    # Filter the DataFrame based on the id_rssd
-    df = df[df['id_rssd'] == id_rssd]
-
-    # Define the categories and corresponding columns
-    income_categories = ['Low', 'Moderate', 'Middle', 'Upper', 'Unknown']
-    bor_loan_orig_columns = ['Loan_Orig_BILow','Loan_Orig_BIMod', 'Loan_Orig_BIMid','Loan_Orig_BIUpp','Loan_Orig_BIUnk']
-    bor_loan_amt_columns = ['Amt_Orig_BILow', 'Amt_Orig_BIMod', 'Amt_Orig_BIMid', 'Amt_Orig_BIUpp', 'Amt_Orig_BIUnk']
-
-    # Calculate the sums for each category
-    bor_loan_orig_sums = [df[col].sum() for col in bor_loan_orig_columns]
-    bor_loan_amt_sums = [df[col].sum() for col in bor_loan_amt_columns]
-
-    # Calculate the total sums
-    bor_total_loan_orig = sum(bor_loan_orig_sums)
-    bor_total_loan_amt = sum(bor_loan_amt_sums)
-
-    # Calculate the percentages
-    bor_loan_orig_percents = [round(sum_ / bor_total_loan_orig * 100, 2) for sum_ in bor_loan_orig_sums]
-    bor_loan_amt_percents = [round(sum_ / bor_total_loan_amt * 100, 2) for sum_ in bor_loan_amt_sums]
-
-    # Create the DataFrame
-    bor_data = {
-        'Income Category': income_categories + ['Total'],
-        'Loans Originated': bor_loan_orig_sums + [bor_total_loan_orig],
-        'Percentage of Loans Originated': bor_loan_orig_percents + [100.0],
-        'Total Loan Amounts': bor_loan_amt_sums + [bor_total_loan_amt],
-        'Percentage of Total Loan Amounts': bor_loan_amt_percents + [100.0]
-    }
-    bor_income_data = pd.DataFrame(bor_data)
-
-    return bor_income_data
-
-def calculate_combined_income_data(df, id_rssd):
-    # Filter the DataFrame based on the id_rssd
-    df = df[df['id_rssd'] == id_rssd]
-
-    # Define the categories and corresponding columns
-    income_categories = ['Low', 'Moderate', 'Middle', 'Upper', 'Unknown']
-    bor_loan_orig_columns = ['Loan_Orig_BILow','Loan_Orig_BIMod', 'Loan_Orig_BIMid','Loan_Orig_BIUpp','Loan_Orig_BIUnk']
-    bor_loan_amt_columns = ['Amt_Orig_BILow', 'Amt_Orig_BIMod', 'Amt_Orig_BIMid', 'Amt_Orig_BIUpp', 'Amt_Orig_BIUnk']
-    loan_orig_columns = ['Loan_Orig_TILow','Loan_Orig_TIMod', 'Loan_Orig_TIMid','Loan_Orig_TIUpp','Loan_Orig_TIUnk']
-    loan_amt_columns = ['Amt_Orig_TILow', 'Amt_Orig_TIMod', 'Amt_Orig_TIMid', 'Amt_Orig_TIUpp', 'Amt_Orig_TIUnk']
-
-    # Calculate the sums for each category
-    bor_loan_orig_sums = [df[col].sum() for col in bor_loan_orig_columns]
-    bor_loan_amt_sums = [df[col].sum() for col in bor_loan_amt_columns]
-    loan_orig_sums = [df[col].sum() for col in loan_orig_columns]
-    loan_amt_sums = [df[col].sum() for col in loan_amt_columns]
-
-    # Calculate the total sums
-    bor_total_loan_orig = sum(bor_loan_orig_sums)
-    bor_total_loan_amt = sum(bor_loan_amt_sums)
-    total_loan_orig = sum(loan_orig_sums)
-    total_loan_amt = sum(loan_amt_sums)
-
-    # Calculate the percentages
-    bor_loan_orig_percents = [round(sum_ / bor_total_loan_orig * 100, 2) for sum_ in bor_loan_orig_sums]
-    bor_loan_amt_percents = [round(sum_ / bor_total_loan_amt * 100, 2) for sum_ in bor_loan_amt_sums]
-    loan_orig_percents = [round(sum_ / total_loan_orig * 100, 2) for sum_ in loan_orig_sums]
-    loan_amt_percents = [round(sum_ / total_loan_amt * 100, 2) for sum_ in loan_amt_sums]
-
-    # Create the DataFrames
-    bor_data = {
-        'Income Category': income_categories + ['Total'],
-        'Borrower Loans Originated': bor_loan_orig_sums + [bor_total_loan_orig],
-        'Borrower Percentage of Loans Originated': bor_loan_orig_percents + [100.0],
-        'Borrower Total Loan Amounts': bor_loan_amt_sums + [bor_total_loan_amt],
-        'Borrower Percentage of Total Loan Amounts': bor_loan_amt_percents + [100.0]
-    }
-    bor_income_data = pd.DataFrame(bor_data)
-
-    census_data = {
-        'Income Category': income_categories + ['Total'],
-        'Census Loans Originated': loan_orig_sums + [total_loan_orig],
-        'Census Percentage of Loans Originated': loan_orig_percents + [100.0],
-        'Census Total Loan Amounts': loan_amt_sums + [total_loan_amt],
-        'Census Percentage of Total Loan Amounts': loan_amt_percents + [100.0]
-    }
-    census_income_data = pd.DataFrame(census_data)
-
-    # Combine the DataFrames
-    combined_data = pd.concat([bor_income_data.set_index('Income Category'), census_income_data.set_index('Income Category')], axis=1).reset_index()
-
-    return combined_data
-
-def calculate_loan_data(df, id_rssd):
-    # Filter the DataFrame based on the id_rssd
-    df = df[df['id_rssd'] == id_rssd]
-
-    loan_types = ['Home Improvement', 'Home Purchase', 'Multi-Family Purchase', 'Refinance', 'Total']
-    loan_orig_columns = ['Loan_Orig_HI', 'Loan_Orig_SFam', 'Loan_Orig_MFam', 'Loan_Orig_HR']
-    loan_amt_columns = ['Amt_Orig_HI', 'Amt_Orig_SFam', 'Amt_Orig_MFam', 'Amt_Orig_HR']
-
-    # Calculate the sums for each loan type
-    loan_orig_sums = [df[col].sum() for col in loan_orig_columns]
-    loan_amt_sums = [df[col].sum() for col in loan_amt_columns]
-
-    # Calculate the total sums
-    total_loan_orig = sum(loan_orig_sums)
-    total_loan_amt = sum(loan_amt_sums)
-
-    # Add the total sums to the lists
-    loan_orig_sums.append(total_loan_orig)
-    loan_amt_sums.append(total_loan_amt)
-
-    # Calculate the percentages
-    loan_orig_percents = [round(sum_ / total_loan_orig * 100, 2) for sum_ in loan_orig_sums]
-    loan_amt_percents = [round(sum_ / total_loan_amt * 100, 2) for sum_ in loan_amt_sums]
-
-    # Create the DataFrame
-    data = {
-        'Loan Type': loan_types,
-        'Loans Originated': loan_orig_sums,
-        'Percentage of Loans Originated': loan_orig_percents,
-        'Total Loan Amounts': loan_amt_sums,
-        'Percentage of Total Loan Amounts': loan_amt_percents
-    }
-    loan_data = pd.DataFrame(data)
-
-    return loan_data
-
-def plot_loan_data(df, id_rssd):
-    # Filter the DataFrame based on the id_rssd
-    df = df[df['id_rssd'] == id_rssd]
-
-    loan_types = ['Home Improvement', 'Home Purchase', 'Multi-Family Purchase', 'Refinance', 'Total']
-    loan_orig_columns = ['Loan_Orig_HI', 'Loan_Orig_SFam', 'Loan_Orig_MFam', 'Loan_Orig_HR']
-    loan_amt_columns = ['Amt_Orig_HI', 'Amt_Orig_SFam', 'Amt_Orig_MFam', 'Amt_Orig_HR']
-
-    # Calculate the sums for each loan type
-    loan_orig_sums = [df[col].sum() for col in loan_orig_columns]
-    loan_amt_sums = [df[col].sum() for col in loan_amt_columns]
-
-    # Calculate the total sums
-    total_loan_orig = sum(loan_orig_sums)
-    total_loan_amt = sum(loan_amt_sums)
-
-    # Add the total sums to the lists
-    loan_orig_sums.append(total_loan_orig)
-    loan_amt_sums.append(total_loan_amt)
-
-    # Calculate the percentages
-    loan_orig_percents = [sum_ / total_loan_orig * 100 for sum_ in loan_orig_sums]
-    loan_amt_percents = [sum_ / total_loan_amt * 100 for sum_ in loan_amt_sums]
-
-    # Create the DataFrame
-    data = {
-        'Loan Type': loan_types,
-        'Loans Originated': loan_orig_sums,
-        'Percentage of Loans Originated': loan_orig_percents,
-        'Total Loan Amounts': loan_amt_sums,
-        'Percentage of Total Loan Amounts': loan_amt_percents
-    }
-    loan_data = pd.DataFrame(data)
-
-    # Create a bar graph for Loans Originated
+    # Create a bar chart
     fig = go.Figure(data=[
-        go.Bar(name='Loans Originated', x=loan_data['Loan Type'], y=loan_data['Loans Originated']),
-        go.Bar(name='Total Loan Amounts', x=loan_data['Loan Type'], y=loan_data['Total Loan Amounts'])
+        go.Bar(name='Loan Type', x=list(loan_types.keys()), y=list(loan_types.values()))
     ])
 
-    # Change the bar mode
-    fig.update_layout(barmode='group')
-
-    return fig
-
-def plot_loan_amt_data(df, id_rssd):
-    # Filter the DataFrame based on the id_rssd
-    df = df[df['id_rssd'] == id_rssd]
-
-    income_categories = ['Low', 'Moderate', 'Middle', 'Upper', 'Unknown']
-    bor_loan_amt_columns = ['Amt_Orig_BILow', 'Amt_Orig_BIMod', 'Amt_Orig_BIMid', 'Amt_Orig_BIUpp', 'Amt_Orig_BIUnk']
-
-    # Calculate the sums for each category
-    bor_loan_amt_sums = [df[col].sum() for col in bor_loan_amt_columns]
-
-    # Create a bar graph for Total Loan Amounts
-    fig = go.Figure(data=[
-        go.Bar(name='Total Loan Amounts', x=income_categories, y=bor_loan_amt_sums)
-    ])
-
-    # Add labels and title
+    # Customize the layout
     fig.update_layout(
-        title="Total Loan Amounts by Income Level",
-        xaxis_title="Income Levels",
-        yaxis_title="Amount lent in 000s",
-    )
-
-    return fig
-
-def plot_loan_orig_data(df, id_rssd):
-    # Filter the DataFrame based on the id_rssd
-    df = df[df['id_rssd'] == id_rssd]
-
-    income_categories = ['Low', 'Moderate', 'Middle', 'Upper', 'Unknown']
-    bor_loan_orig_columns = ['Loan_Orig_BILow','Loan_Orig_BIMod', 'Loan_Orig_BIMid','Loan_Orig_BIUpp','Loan_Orig_BIUnk']
-
-    # Calculate the sums for each category
-    bor_loan_orig_sums = [df[col].sum() for col in bor_loan_orig_columns]
-
-    # Create a bar graph for Loans Originated
-    fig = go.Figure(data=[
-        go.Bar(name='Loans Originated', x=income_categories, y=bor_loan_orig_sums)
-    ])
-
-    fig.update_layout(
-        title="Total Loan Originations by Income Level",
-        xaxis_title="Income Levels",
-        yaxis_title="Loans Originated",
+        title='Loan Distribution',
+        xaxis_title='Loan Type',
+        yaxis_title='Amount',
+        barmode='group'
     )
 
     return fig
