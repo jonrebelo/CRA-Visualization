@@ -278,7 +278,6 @@ def create_loan_distribution_chart(df, area_name, engine):
 
 def create_loan_distribution_chart(df, area_name, engine):
     def process_row(partial_ind, state_code, county_code):
-        if partial_ind == 'Y':
             county_name = None
             for table in ['2024 tracts', '2022-2023 tracts']:
                 query = f"SELECT `County name`, `State` FROM `{table}` WHERE `State code` = {state_code} AND `County code` = {county_code};"
@@ -287,9 +286,8 @@ def create_loan_distribution_chart(df, area_name, engine):
                     county_name = df_lookup['County name'][0]
                     break
             if county_name is not None:
-                label = f"{county_name}"
-                return label
-        return None
+                return county_name
+            return None
 
     df = df.with_columns([
         pl.struct(['Partial_Ind', 'State_Code', 'County_Code']).map_elements(lambda x: process_row(x['Partial_Ind'], x['State_Code'], x['County_Code'])).alias('label')
@@ -299,8 +297,6 @@ def create_loan_distribution_chart(df, area_name, engine):
         (pl.col('Amt_Orig_SFam_Closed') + pl.col('Amt_Orig_SFam_Open') + pl.col('Amt_Orig_MFam') + 
          pl.col('SF_Amt_Orig') + pl.col('SB_Amt_Orig')).alias('Total Gross Loans')
     ])
-
-    
 
     df_chart = df.drop(['Partial_Ind', 'State_Code', 'County_Code'])
 
@@ -317,6 +313,7 @@ def create_loan_distribution_chart(df, area_name, engine):
     }
 
     if df_chart.height > 1:
+        print("I am > 1")
         for row in df_chart.iter_rows():
             row_data = list(row)
             label = row_data[df_chart.columns.index('label')]
@@ -336,47 +333,56 @@ def create_loan_distribution_chart(df, area_name, engine):
                 )
                 figures.append(fig)
     else:
-        row_data = df_chart.row(0)
-        label = row_data[df_chart.columns.index('label')]
-        row_data = list(row_data)
-        row_data.pop(df_chart.columns.index('label'))
-        column_names = [col for col in df_chart.columns if col != 'label']
-        mapped_names = [variable_mapping.get(col, col) for col in column_names]
-        fig = go.Figure(data=[go.Bar(x=mapped_names, y=row_data, name=area_name)])
+        print("I am 1")
+        row_data = df_chart.row(0)  # Correctly fetch the single row
+        label = row_data[df_chart.columns.index('label')]  # Extract the label
+        print(f"Label: {label}")  # Debugging: print the extracted label
+        row_data = list(row_data)  # Convert row data to a list for processing
+        row_data.pop(df_chart.columns.index('label'))  # Remove label from row data
+        column_names = [col for col in df_chart.columns if col != 'label']  # Get column names excluding 'label'
+        mapped_names = [variable_mapping.get(col, col) for col in column_names]  # Map column names using variable_mapping
+        fig = go.Figure(data=[go.Bar(x=mapped_names, y=row_data, name=label)])  # Create the figure using the label
+
         # Add annotations for zero values
         for i, value in enumerate(row_data):
             if value == 0:
                 fig.add_annotation(x=mapped_names[i], y=value, text="0", showarrow=False, yshift=10)
+
+        # Set figure layout
         fig.update_layout(
             title_text=f"Loan Distribution for {area_name}, {label}",
             yaxis_title="Dollar Amount $(000's)",
             xaxis_title="Loan Type"
         )
-        figures.append(fig)
+        figures.append(fig)  # Append the figure to the list of figures
 
     df_partial = df.filter(pl.col('Partial_Ind') == 'Y')
-    total_loan_data = df_partial.sum().drop(['Partial_Ind', 'State_Code', 'County_Code', 'label'])
 
-    total_loan_data = total_loan_data.with_columns([
-        (pl.col('Amt_Orig_SFam_Closed') + pl.col('Amt_Orig_SFam_Open') +
-         pl.col('Amt_Orig_MFam') + pl.col('SF_Amt_Orig') + pl.col('SB_Amt_Orig')).alias('Total Gross Loans')
-    ])
+    # Add condition to check if df_partial is not empty
+    if df_partial.height > 0:
+        total_loan_data = df_partial.sum().drop(['Partial_Ind', 'State_Code', 'County_Code', 'label'])
 
-    total_loan_data_list = [total_loan_data[col][0] for col in total_loan_data.columns]
-    mapped_total_names = [variable_mapping.get(col, col) for col in total_loan_data.columns]
-    fig = go.Figure(data=[go.Bar(x=mapped_total_names, y=total_loan_data_list, name="Total")])
-    # Add annotations for zero values
-    for i, value in enumerate(total_loan_data_list):
-        if value == 0:
-            fig.add_annotation(x=mapped_total_names[i], y=value, text="0", showarrow=False, yshift=10)
-    fig.update_layout(
-        title_text="Total Loan Distribution",
-        yaxis_title="Dollar Amount $(000's)",
-        xaxis_title="Loan Type"
-    )
-    figures.append(fig)
+        total_loan_data = total_loan_data.with_columns([
+            (pl.col('Amt_Orig_SFam_Closed') + pl.col('Amt_Orig_SFam_Open') +
+            pl.col('Amt_Orig_MFam') + pl.col('SF_Amt_Orig') + pl.col('SB_Amt_Orig')).alias('Total Gross Loans')
+        ])
+
+        total_loan_data_list = [total_loan_data[col][0] for col in total_loan_data.columns]
+        mapped_total_names = [variable_mapping.get(col, col) for col in total_loan_data.columns]
+        fig = go.Figure(data=[go.Bar(x=mapped_total_names, y=total_loan_data_list, name="Total")])
+        # Add annotations for zero values
+        for i, value in enumerate(total_loan_data_list):
+            if value == 0:
+                fig.add_annotation(x=mapped_total_names[i], y=value, text="0", showarrow=False, yshift=10)
+        fig.update_layout(
+            title_text="Total Loan Distribution",
+            yaxis_title="Dollar Amount $(000's)",
+            xaxis_title="Loan Type"
+        )
+        figures.append(fig)
 
     return figures
+
 
 
 
