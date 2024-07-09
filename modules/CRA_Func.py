@@ -276,14 +276,14 @@ def create_loan_distribution_chart(df, area_name, engine):
 
 
 
-def create_loan_distribution_great_tables(df, area_name, engine):
+def create_loan_distribution_chart(df, area_name, engine):
     def process_row(partial_ind, state_code, county_code):
         if partial_ind == 'Y':
             county_name = None
             for table in ['2024 tracts', '2022-2023 tracts']:
                 query = f"SELECT `County name`, `State` FROM `{table}` WHERE `State code` = {state_code} AND `County code` = {county_code};"
                 df_lookup = pl.read_database(query, engine)
-                if len(df_lookup) != 0:
+                if df_lookup.height != 0:
                     county_name = df_lookup['County name'][0]
                     break
             if county_name is not None:
@@ -291,7 +291,6 @@ def create_loan_distribution_great_tables(df, area_name, engine):
                 return label
         return None
 
-    # Process loan data if needed
     df = df.with_columns([
         pl.struct(['Partial_Ind', 'State_Code', 'County_Code']).map_elements(lambda x: process_row(x['Partial_Ind'], x['State_Code'], x['County_Code'])).alias('label')
     ])
@@ -301,6 +300,131 @@ def create_loan_distribution_great_tables(df, area_name, engine):
          pl.col('SF_Amt_Orig') + pl.col('SB_Amt_Orig')).alias('Total Gross Loans')
     ])
 
+    
+
+    df_chart = df.drop(['Partial_Ind', 'State_Code', 'County_Code'])
+
+    figures = []
+
+    variable_mapping = {
+        'Amt_Orig_SFam_Closed': '1-4 Family Closed-End',
+        'Amt_Orig_SFam_Open': '1-4 Family Revolving',
+        'Amt_Orig_MFam': 'Multi-Family',
+        'SF_Amt_Orig': 'Farm Loans',
+        'SB_Amt_Orig': 'Small Business Loans',
+        'Amt_Orig': 'Total Mortgage Loan Amount',
+        'Total Gross Loans': 'Total Gross Loans'
+    }
+
+    if df_chart.height > 1:
+        for row in df_chart.iter_rows():
+            row_data = list(row)
+            label = row_data[df_chart.columns.index('label')]
+            row_data.pop(df_chart.columns.index('label'))
+            if label is not None:
+                column_names = [col for col in df_chart.columns if col != 'label']
+                mapped_names = [variable_mapping.get(col, col) for col in column_names]
+                fig = go.Figure(data=[go.Bar(x=mapped_names, y=row_data, name=label)])
+                # Add annotations for zero values
+                for i, value in enumerate(row_data):
+                    if value == 0:
+                        fig.add_annotation(x=mapped_names[i], y=value, text="0", showarrow=False, yshift=10)
+                fig.update_layout(
+                    title_text=f"Loan Distribution for {area_name}, {label}",
+                    yaxis_title="Dollar Amount $(000's)",
+                    xaxis_title="Loan Type"
+                )
+                figures.append(fig)
+    else:
+        row_data = df_chart.row(0)
+        label = row_data[df_chart.columns.index('label')]
+        row_data = list(row_data)
+        row_data.pop(df_chart.columns.index('label'))
+        column_names = [col for col in df_chart.columns if col != 'label']
+        mapped_names = [variable_mapping.get(col, col) for col in column_names]
+        fig = go.Figure(data=[go.Bar(x=mapped_names, y=row_data, name=area_name)])
+        # Add annotations for zero values
+        for i, value in enumerate(row_data):
+            if value == 0:
+                fig.add_annotation(x=mapped_names[i], y=value, text="0", showarrow=False, yshift=10)
+        fig.update_layout(
+            title_text=f"Loan Distribution for {area_name}, {label}",
+            yaxis_title="Dollar Amount $(000's)",
+            xaxis_title="Loan Type"
+        )
+        figures.append(fig)
+
+    df_partial = df.filter(pl.col('Partial_Ind') == 'Y')
+    total_loan_data = df_partial.sum().drop(['Partial_Ind', 'State_Code', 'County_Code', 'label'])
+
+    total_loan_data = total_loan_data.with_columns([
+        (pl.col('Amt_Orig_SFam_Closed') + pl.col('Amt_Orig_SFam_Open') +
+         pl.col('Amt_Orig_MFam') + pl.col('SF_Amt_Orig') + pl.col('SB_Amt_Orig')).alias('Total Gross Loans')
+    ])
+
+    total_loan_data_list = [total_loan_data[col][0] for col in total_loan_data.columns]
+    mapped_total_names = [variable_mapping.get(col, col) for col in total_loan_data.columns]
+    fig = go.Figure(data=[go.Bar(x=mapped_total_names, y=total_loan_data_list, name="Total")])
+    # Add annotations for zero values
+    for i, value in enumerate(total_loan_data_list):
+        if value == 0:
+            fig.add_annotation(x=mapped_total_names[i], y=value, text="0", showarrow=False, yshift=10)
+    fig.update_layout(
+        title_text="Total Loan Distribution",
+        yaxis_title="Dollar Amount $(000's)",
+        xaxis_title="Loan Type"
+    )
+    figures.append(fig)
+
+    return figures
+
+
+
+def create_loan_distribution_great_tables(df, area_name, engine):
+    def process_row(state_code, county_code):
+        county_name = None
+        for table in ['2024 tracts', '2022-2023 tracts']:
+                query = f"SELECT `County name`, `State` FROM `{table}` WHERE `State code` = {state_code} AND `County code` = {county_code};"
+                df_lookup = pl.read_database(query, engine)
+                if len(df_lookup) != 0:
+                    county_name = df_lookup['County name'][0]
+                    break
+        if county_name is not None:
+                label = f"{county_name}"
+                return label
+        return None
+
+    # Process loan data if needed
+    df = df.with_columns([
+        pl.struct(['State_Code', 'County_Code']).map_elements(lambda x: process_row(x['State_Code'], x['County_Code'])).alias('label')
+    ])
+
+    df = df.with_columns([
+        (pl.col('Amt_Orig_SFam_Closed') + pl.col('Amt_Orig_SFam_Open') + pl.col('Amt_Orig_MFam') + 
+     pl.col('SF_Amt_Orig') + pl.col('SB_Amt_Orig') - pl.col('Amt_Orig')).alias('Other Loans'),
+    (pl.col('Amt_Orig_SFam_Closed') + pl.col('Amt_Orig_SFam_Open') + pl.col('Amt_Orig_MFam') + 
+     pl.col('SF_Amt_Orig') + pl.col('SB_Amt_Orig')).alias('Total Gross Loans')
+
+])  
+    
+    if len(df) > 1:
+        totals = {
+            'Amt_Orig_SFam_Closed': df['Amt_Orig_SFam_Closed'].sum(),
+            'Amt_Orig_SFam_Open': df['Amt_Orig_SFam_Open'].sum(),
+            'Amt_Orig_MFam': df['Amt_Orig_MFam'].sum(),
+            'SF_Amt_Orig': df['SF_Amt_Orig'].sum(),
+            'SB_Amt_Orig': df['SB_Amt_Orig'].sum(),
+            'Amt_Orig': df['Amt_Orig'].sum(), 
+            'Partial_Ind': None,
+            'State_Code': None,
+            'County_Code': None,
+            'label': 'Overall',
+            'Other Loans': df['Other Loans'].sum(),
+            'Total Gross Loans': df['Total Gross Loans'].sum()
+        }
+        df_totals = pl.DataFrame([totals])
+        df = df.vstack(df_totals)
+
     # Ensure columns are correctly typed (if necessary)
     df = df.cast(
         {'Amt_Orig_SFam_Closed': pl.Int64,
@@ -309,6 +433,7 @@ def create_loan_distribution_great_tables(df, area_name, engine):
          'SF_Amt_Orig': pl.Int64,
          'SB_Amt_Orig': pl.Int64,
          'Amt_Orig': pl.Int64,
+         'Other Loans': pl.Int64,
          'Total Gross Loans': pl.Int64}
     )
 
@@ -319,16 +444,141 @@ def create_loan_distribution_great_tables(df, area_name, engine):
         'Amt_Orig_MFam': 'Multi-Family',
         'SF_Amt_Orig': 'Farm Loans',
         'SB_Amt_Orig': 'Small Business Loans',
-        'Amt_Orig': 'Total Mortgage Loan Amount'
+        'Amt_Orig': 'Total Mortgage Amount',
+        'label': 'County'
     }
 )
-
 
     # Create Great Tables instance with Polars DataFrame
     gt_instance = (
     GT(df)
-    .tab_header("Loan Distribution")
-    .cols_hide(columns=['label', 'Partial_Ind', 'State_Code', 'County_Code'])
+    .opt_table_outline()
+    .opt_stylize(style = 2, color = "blue")
+    .tab_header("Loan Distribution (in 000's)")
+    .tab_spanner(label="Loan Type", columns=['1-4 Family Closed-End', '1-4 Family Revolving', 'Multi-Family', 'Small Business Loans', 'Farm Loans'])
+    .tab_spanner(label="Totals (in 000's)", columns=['Total Mortgage Amount', 'Other Loans', 'Total Gross Loans'])
+    .cols_hide(columns=['Partial_Ind', 'State_Code', 'County_Code'])
+    .fmt_number(columns=['1-4 Family Closed-End', '1-4 Family Revolving', 'Multi-Family', 'Small Business Loans', 'Farm Loans', 'Total Mortgage Amount', 'Total Gross Loans', 'Other Loans'], decimals=0, use_seps=True)  
+    .tab_stubhead(label = "County")
+    .tab_stub(rowname_col="County")
+    .tab_options(
+    table_body_hlines_style="solid",
+    table_body_vlines_style="solid",
+    table_body_border_top_color="gray",
+    table_body_border_bottom_color="gray",
+    container_width = "100%"   
+    )
+    )
+
+    # Return Great Tables instance
+    return gt_instance
+
+
+def create_loan_distribution_percentage_tables(df, area_name, engine):
+    def process_row(state_code, county_code):
+        county_name = None
+        for table in ['2024 tracts', '2022-2023 tracts']:
+                query = f"SELECT `County name`, `State` FROM `{table}` WHERE `State code` = {state_code} AND `County code` = {county_code};"
+                df_lookup = pl.read_database(query, engine)
+                if len(df_lookup) != 0:
+                    county_name = df_lookup['County name'][0]
+                    break
+        if county_name is not None:
+                label = f"{county_name}"
+                return label
+        return None
+
+    # Process loan data if needed
+    df = df.with_columns([
+        pl.struct(['State_Code', 'County_Code']).map_elements(lambda x: process_row(x['State_Code'], x['County_Code'])).alias('label')
+    ])
+
+    df = df.with_columns([
+        (pl.col('Amt_Orig_SFam_Closed') + pl.col('Amt_Orig_SFam_Open') + pl.col('Amt_Orig_MFam') + 
+     pl.col('SF_Amt_Orig') + pl.col('SB_Amt_Orig') - pl.col('Amt_Orig')).alias('Other Loans'),
+    (pl.col('Amt_Orig_SFam_Closed') + pl.col('Amt_Orig_SFam_Open') + pl.col('Amt_Orig_MFam') + 
+     pl.col('SF_Amt_Orig') + pl.col('SB_Amt_Orig')).alias('Total Gross Loans')])
+
+    df = df.with_columns([
+    ((pl.col('Amt_Orig_SFam_Closed') + pl.col('Amt_Orig_SFam_Open') + pl.col('Amt_Orig_MFam') + 
+     pl.col('SF_Amt_Orig') + pl.col('SB_Amt_Orig') - pl.col('Amt_Orig')) / pl.col('Total Gross Loans')).alias('Other Loans %'),
+    ((pl.col('Amt_Orig_SFam_Closed') + pl.col('Amt_Orig_SFam_Open') + pl.col('Amt_Orig_MFam') + 
+     pl.col('SF_Amt_Orig') + pl.col('SB_Amt_Orig')) / pl.col('Total Gross Loans')).alias('Total Gross Loan %')
+    ])  
+
+    if len(df) > 1:
+        totals = {
+            'Amt_Orig_SFam_Closed': df['Amt_Orig_SFam_Closed'].sum(),
+            'Amt_Orig_SFam_Open': df['Amt_Orig_SFam_Open'].sum(),
+            'Amt_Orig_MFam': df['Amt_Orig_MFam'].sum(),
+            'SF_Amt_Orig': df['SF_Amt_Orig'].sum(),
+            'SB_Amt_Orig': df['SB_Amt_Orig'].sum(),
+            'Amt_Orig': df['Amt_Orig'].sum(), 
+            'Partial_Ind': None,
+            'State_Code': None,
+            'County_Code': None,
+            'label': 'Overall',
+            'Other Loans': df['Other Loans'].sum(),
+            'Total Gross Loans': df['Total Gross Loans'].sum(),
+        }
+        totals['Other Loans %'] = totals['Other Loans'] / totals['Total Gross Loans']
+        totals['Total Gross Loan %'] = (totals['Amt_Orig_SFam_Closed'] + totals['Amt_Orig_SFam_Open'] + totals['Amt_Orig_MFam'] + totals['SF_Amt_Orig'] + totals['SB_Amt_Orig']) / totals['Total Gross Loans']
+        df_totals = pl.DataFrame([totals])
+        df = df.vstack(df_totals)
+
+    # Ensure columns are correctly typed (if necessary)
+    df = df.cast(
+        {'Amt_Orig_SFam_Closed': pl.Float64,
+         'Amt_Orig_SFam_Open': pl.Float64,
+         'Amt_Orig_MFam': pl.Float64,
+         'SF_Amt_Orig': pl.Float64,
+         'SB_Amt_Orig': pl.Float64,
+         'Amt_Orig': pl.Float64,
+         'Other Loans': pl.Float64,
+         'Total Gross Loans': pl.Float64,
+         'Other Loans %': pl.Float64,
+         'Total Gross Loan %': pl.Float64}
+    )
+
+    df = df.with_columns([
+    (pl.col('Amt_Orig_SFam_Closed') / pl.col('Total Gross Loans')).alias('1-4 Family Closed-End %'),
+    (pl.col('Amt_Orig_SFam_Open') / pl.col('Total Gross Loans')).alias('1-4 Family Revolving %'),
+    (pl.col('Amt_Orig_MFam') / pl.col('Total Gross Loans')).alias('Multi-Family %'),
+    (pl.col('SF_Amt_Orig') / pl.col('Total Gross Loans')).alias('Farm Loans %'),
+    (pl.col('SB_Amt_Orig') / pl.col('Total Gross Loans')).alias('Small Business Loans %'),
+    (pl.col('Amt_Orig') / pl.col('Total Gross Loans')).alias('Total Mortgage %'),
+])
+
+    
+    df = df.rename(
+{
+    '1-4 Family Closed-End %': '1-4 Family Closed-End',
+    '1-4 Family Revolving %': '1-4 Family Revolving',
+    'Multi-Family %': 'Multi-Family',
+    'Farm Loans %': 'Farm Loans',
+    'Small Business Loans %': 'Small Business Loans',
+    'label': 'County'
+})
+
+    # Create Great Tables instance with Polars DataFrame
+    gt_instance = (
+    GT(df)
+    .opt_table_outline()
+    .opt_stylize(style = 2, color = "blue")
+    .tab_header("Loan Distribution (in %)")
+    .tab_spanner(label="Loan Type", columns=['1-4 Family Closed-End', '1-4 Family Revolving', 'Multi-Family', 'Small Business Loans', 'Farm Loans'])
+    .tab_spanner(label="Totals (in %)", columns=['Total Mortgage %', 'Other Loans %', 'Total Gross Loan %'])
+    .cols_hide(columns=['Partial_Ind', 'State_Code', 'County_Code', 'Total Gross Loans', 'Other Loans', 'Amt_Orig_SFam_Closed', 'SF_Amt_Orig', 'SB_Amt_Orig', 'Amt_Orig', 'Amt_Orig_SFam_Open', 'Amt_Orig_MFam'])
+    .fmt_percent(columns=['1-4 Family Closed-End', '1-4 Family Revolving', 'Multi-Family', 'Small Business Loans', 'Farm Loans', 'Total Mortgage %', 'Other Loans %', 'Total Gross Loan %'], decimals=1)  
+    .tab_stubhead(label = "County")
+    .tab_stub(rowname_col="County")
+    .tab_options(
+    table_body_hlines_style="solid",
+    table_body_vlines_style="solid",
+    table_body_border_top_color="gray",
+    table_body_border_bottom_color="gray",
+    container_width = "100%"   
+    )
     )
 
     # Return Great Tables instance

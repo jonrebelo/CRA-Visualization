@@ -57,7 +57,11 @@ if st.session_state['page'] == 'Home':
                     def create_great_tables_table():
                         dataset = CRA.create_loan_distribution_great_tables(df, selected_area, engine)
                         if dataset is not None:  # Ensure dataset is not 
-                            st.title(f"Loan Distribution for {selected_year}")
+                            st.title(f" {selected_year} Loan Distribution for {selected_bank} in {selected_area}")
+                            st.html(dataset.as_raw_html())
+                    def create_great_tables_table_percent():
+                        dataset = CRA.create_loan_distribution_percentage_tables(df, selected_area, engine)
+                        if dataset is not None:  # Ensure dataset is not )
                             st.html(dataset.as_raw_html())
                     
                     # Display the selected graphs and tables
@@ -66,3 +70,4 @@ if st.session_state['page'] == 'Home':
                             create_plotly_chart()
                         elif option == 'Loan Distribution Table':
                             create_great_tables_table()
+                            create_great_tables_table_percent()
