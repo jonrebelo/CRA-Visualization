@@ -5,69 +5,67 @@ from great_tables import GT
 
 st.set_page_config(page_title='CRA Analysis', layout='wide', page_icon=':📊:')
 
-# Initialize the session state if it doesn't exist
-if 'page' not in st.session_state:
-    st.session_state['page'] = 'Home'
+engine = CRA.create_db_connection()
+years = ['Select...', '2018', '2019', '2020', '2021']
+selected_year = st.selectbox('Select an exam year', options=years)
 
-# Create a navigation menu
-page = st.sidebar.selectbox("Navigation", ['Home'])
-
-if page != st.session_state['page']:
-    st.session_state['page'] = page
-
-if st.session_state['page'] == 'Home':
-    engine = CRA.create_db_connection()
-
+if selected_year != 'Select...':
     # Create a dropdown menu for bank names
-    bank_names = ['Select...'] + sorted(CRA.fetch_bank_names(engine))
+    bank_names = ['Select...'] + sorted(CRA.fetch_bank_names_for_year(engine, selected_year))
     selected_bank = st.selectbox('Select a bank', options=bank_names)
 
-    if selected_bank != 'Select...':
-        # Create a dropdown menu for exam years
-        years = ['Select...'] + sorted(CRA.fetch_years_for_bank(engine, selected_bank))
-        selected_year = st.selectbox('Select an exam year', options=years)
+    assessment_areas = CRA.fetch_assessment_area(engine, selected_bank, selected_year)
 
-        if selected_year != 'Select...':
-            assessment_areas = CRA.fetch_assessment_area(engine, selected_bank, selected_year)
-            if assessment_areas is None:
-                assessment_areas = {'No assessment areas found': {'codes': ('nan', 'nan', 'nan', 'nan', 'nan'), 'lookup_method': 'nan'}}
-                st.write("No assessment areas found for the selected bank and year.")
-            else:
-                # Add 'Overall' option to the list
-                assessment_areas = {'Select...': {'codes': ('nan', 'nan', 'nan', 'nan', 'nan'), 'lookup_method': 'nan'}, **assessment_areas}
+    # Add 'Overall' option to the list
+    assessment_areas = {'Select...': {'codes': ('nan', 'nan', 'nan', 'nan', 'nan'), 'lookup_method': 'nan'}, **assessment_areas}
 
-                # Create a dropdown menu for assessment areas
-                selected_area = st.selectbox('Select an assessment area', options=assessment_areas.keys())
-                md_code, msa_code, state_code, county_code, lookup_method = assessment_areas[selected_area]['codes']
+    # Create a dropdown menu for assessment areas
+    selected_area = st.selectbox('Select an assessment area', options=assessment_areas.keys())
+    md_code, msa_code, state_code, county_code, lookup_method = assessment_areas[selected_area]['codes']
+    
+    if assessment_areas is None:
+        assessment_areas = {'No assessment areas found': {'codes': ('nan', 'nan', 'nan', 'nan', 'nan'), 'lookup_method': 'nan'}}
+        st.write("No assessment areas found for the selected bank and year.")
+    else:
+        if selected_area != 'Select...':
+            options = ['Loan Distribution Graph', 'Loan Distribution Table', 'Assessment Area Distribution Table']
+            selected_options = st.multiselect('Select the graphs and tables you want to display:', options)
+            
+            # Function to create Plotly chart
+            def create_plotly_chart():
+                df = CRA.fetch_loan_data_loan_dist(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code)
+                figures = CRA.create_loan_distribution_chart(df, selected_area, engine)
+                for fig in figures:
+                    st.plotly_chart(fig)
 
-                if selected_area != 'Select...':
-                    options = ['Loan Distribution Graph', 'Loan Distribution Table']
-                    selected_options = st.sidebar.multiselect('Select the graphs and tables you want to display:', options)
-                    
-                    # Fetch the loan data
-                    df = CRA.fetch_loan_data_loan_dist(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code)
-                    
-                    # Function to create Plotly chart
-                    def create_plotly_chart():
-                        figures = CRA.create_loan_distribution_chart(df, selected_area, engine)
-                        for fig in figures:
-                            st.plotly_chart(fig)
+            # Function to create Great Tables table
+            def create_great_tables_table():
+                df = CRA.fetch_loan_data_loan_dist(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code)
+                dataset = CRA.create_loan_distribution_great_tables(df, selected_area, engine)
+                if dataset is not None:  # Ensure dataset is not 
+                    st.html(dataset.as_raw_html())
 
-                    # Function to create Great Tables table
-                    def create_great_tables_table():
-                        dataset = CRA.create_loan_distribution_great_tables(df, selected_area, engine)
-                        if dataset is not None:  # Ensure dataset is not 
-                            st.title(f" {selected_year} Loan Distribution for {selected_bank} in {selected_area}")
-                            st.html(dataset.as_raw_html())
-                    def create_great_tables_table_percent():
-                        dataset = CRA.create_loan_distribution_percentage_tables(df, selected_area, engine)
-                        if dataset is not None:  # Ensure dataset is not )
-                            st.html(dataset.as_raw_html())
-                    
-                    # Display the selected graphs and tables
-                    for option in selected_options:
-                        if option == 'Loan Distribution Graph':
-                            create_plotly_chart()
-                        elif option == 'Loan Distribution Table':
-                            create_great_tables_table()
-                            create_great_tables_table_percent()
+            def create_great_tables_table_percent():
+                df = CRA.fetch_loan_data_loan_dist(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code)
+                dataset = CRA.create_loan_distribution_percentage_tables(df, selected_area, engine)
+                if dataset is not None:  # Ensure dataset is not )
+                    st.html(dataset.as_raw_html())
+
+            def create_inside_out_table():
+                df = CRA.fetch_loan_data_inside_out(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code)
+                dataset = CRA.create_inside_out_great_table(df, engine)
+                if dataset is not None:  # Ensure dataset is not )
+                    st.html(dataset.as_raw_html())
+
+
+            # Display the selected graphs and tables
+            for option in selected_options:
+                if option == 'Loan Distribution Graph':
+                    create_plotly_chart()
+                elif option == 'Loan Distribution Table':
+                    st.write(f" {selected_year} Loan Distribution for {selected_bank} in {selected_area}")
+                    create_great_tables_table()
+                    create_great_tables_table_percent()
+                elif option == 'Assessment Area Distribution Table':
+                    create_inside_out_table()
+                    st.write(f" {selected_year} Assessment Area Distribution Table for {selected_bank} in {selected_area}")
