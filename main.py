@@ -67,5 +67,6 @@ if selected_year != 'Select...':
                     create_great_tables_table()
                     create_great_tables_table_percent()
                 elif option == 'Assessment Area Distribution Table':
-                    create_inside_out_table()
                     st.write(f" {selected_year} Assessment Area Distribution Table for {selected_bank} in {selected_area}")
+                    create_inside_out_table()
+                    
