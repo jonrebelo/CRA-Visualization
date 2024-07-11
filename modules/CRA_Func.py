@@ -697,7 +697,7 @@ def create_inside_out_great_table(df, engine):
         style=style.fill(color="lightcyan"),
         locations=loc.body(rows=[7]),
     )
-    .tab_header("Inside Outside")
+    .tab_header("Assessment Area Distribution")
     .tab_spanner(label="Inside", columns=['b', 'h', 'c', 'i'])
     .tab_spanner(label="Outside", columns=['d', 'j', 'e', 'k'])
     .tab_spanner(label="Totals", columns=['f', 'l', 'g', 'm'])
