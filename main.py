@@ -16,17 +16,17 @@ if selected_year != 'Select...':
 
     assessment_areas = CRA.fetch_assessment_area(engine, selected_bank, selected_year)
 
-    # Add 'Overall' option to the list
-    assessment_areas = {'Select...': {'codes': ('nan', 'nan', 'nan', 'nan', 'nan'), 'lookup_method': 'nan'}, **assessment_areas}
-
-    # Create a dropdown menu for assessment areas
-    selected_area = st.selectbox('Select an assessment area', options=assessment_areas.keys())
-    md_code, msa_code, state_code, county_code, lookup_method = assessment_areas[selected_area]['codes']
-    
     if assessment_areas is None:
         assessment_areas = {'No assessment areas found': {'codes': ('nan', 'nan', 'nan', 'nan', 'nan'), 'lookup_method': 'nan'}}
         st.write("No assessment areas found for the selected bank and year.")
     else:
+        # Add 'Overall' option to the list
+        assessment_areas = {'Select...': {'codes': ('nan', 'nan', 'nan', 'nan', 'nan'), 'lookup_method': 'nan'}, **assessment_areas}
+
+        # Create a dropdown menu for assessment areas
+        selected_area = st.selectbox('Select an assessment area', options=assessment_areas.keys())
+        md_code, msa_code, state_code, county_code, lookup_method = assessment_areas[selected_area]['codes']
+
         if selected_area != 'Select...':
             options = ['Loan Distribution Graph', 'Loan Distribution Table', 'Assessment Area Distribution Table']
             selected_options = st.multiselect('Select the graphs and tables you want to display:', options)
