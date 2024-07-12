@@ -14,22 +14,24 @@ if selected_year != 'Select...':
     bank_names = ['Select...'] + sorted(CRA.fetch_bank_names_for_year(engine, selected_year))
     selected_bank = st.selectbox('Select a bank', options=bank_names)
 
-    assessment_areas = CRA.fetch_assessment_area(engine, selected_bank, selected_year)
+    if selected_bank != 'Select...':
+        selected_options = []  # Initialize selected_options to an empty list
+        assessment_areas = CRA.fetch_assessment_area(engine, selected_bank, selected_year)
 
-    if assessment_areas is None:
-        assessment_areas = {'No assessment areas found': {'codes': ('nan', 'nan', 'nan', 'nan', 'nan'), 'lookup_method': 'nan'}}
-        st.write("No assessment areas found for the selected bank and year.")
-    else:
-        # Add 'Overall' option to the list
-        assessment_areas = {'Select...': {'codes': ('nan', 'nan', 'nan', 'nan', 'nan'), 'lookup_method': 'nan'}, **assessment_areas}
+        if assessment_areas is None:
+            assessment_areas = {'No assessment areas found': {'codes': ('nan', 'nan', 'nan', 'nan', 'nan'), 'lookup_method': 'nan'}}
+            st.write("No assessment areas found for the selected bank and year.")
+        else:
+            # Add 'Overall' option to the list
+            assessment_areas = {'Select...': {'codes': ('nan', 'nan', 'nan', 'nan', 'nan'), 'lookup_method': 'nan'}, **assessment_areas}
 
-        # Create a dropdown menu for assessment areas
-        selected_area = st.selectbox('Select an assessment area', options=assessment_areas.keys())
-        md_code, msa_code, state_code, county_code, lookup_method = assessment_areas[selected_area]['codes']
+            # Create a dropdown menu for assessment areas
+            selected_area = st.selectbox('Select an assessment area', options=assessment_areas.keys())
+            md_code, msa_code, state_code, county_code, lookup_method = assessment_areas[selected_area]['codes']
 
-        if selected_area != 'Select...':
-            options = ['Loan Distribution Graph', 'Loan Distribution Table', 'Assessment Area Distribution Table']
-            selected_options = st.multiselect('Select the graphs and tables you want to display:', options)
+            if selected_area != 'Select...':
+                options = ['Loan Distribution Graph', 'Loan Distribution Table', 'Assessment Area Distribution Table']
+                selected_options = st.multiselect('Select the graphs and tables you want to display:', options)
             
             # Function to create Plotly chart
             def create_plotly_chart():
@@ -41,14 +43,8 @@ if selected_year != 'Select...':
             # Function to create Great Tables table
             def create_great_tables_table():
                 df = CRA.fetch_loan_data_loan_dist(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code)
-                dataset = CRA.create_loan_distribution_great_tables(df, selected_area, engine)
+                dataset = CRA.create_loan_distribution_great_tables(df, selected_area, selected_bank)
                 if dataset is not None:  # Ensure dataset is not 
-                    st.html(dataset.as_raw_html())
-
-            def create_great_tables_table_percent():
-                df = CRA.fetch_loan_data_loan_dist(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code)
-                dataset = CRA.create_loan_distribution_percentage_tables(df, selected_area, engine)
-                if dataset is not None:  # Ensure dataset is not )
                     st.html(dataset.as_raw_html())
 
             def create_inside_out_table():
@@ -65,7 +61,6 @@ if selected_year != 'Select...':
                 elif option == 'Loan Distribution Table':
                     st.write(f" {selected_year} Loan Distribution for {selected_bank} in {selected_area}")
                     create_great_tables_table()
-                    create_great_tables_table_percent()
                 elif option == 'Assessment Area Distribution Table':
                     st.write(f" {selected_year} Assessment Area Distribution Table for {selected_bank} in {selected_area}")
                     create_inside_out_table()
