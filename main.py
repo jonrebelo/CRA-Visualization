@@ -32,7 +32,7 @@ if selected_year != 'Select...':
             if selected_area != 'Select...':
                 options = ['Loan Distribution Graph', 'Loan Distribution Table', 'Assessment Area Distribution Table']
                 selected_options = st.multiselect('Select the graphs and tables you want to display:', options)
-            
+                st.markdown(f'<h1 style="font-size:30px;"> CRA Data for {selected_bank} - {selected_year} - {selected_area}</h1>', unsafe_allow_html=True)
             # Function to create Plotly chart
             def create_plotly_chart():
                 df = CRA.fetch_loan_data_loan_dist(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code)
@@ -49,7 +49,7 @@ if selected_year != 'Select...':
 
             def create_inside_out_table():
                 df = CRA.fetch_loan_data_inside_out(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code)
-                dataset = CRA.create_inside_out_great_table(df, engine)
+                dataset = CRA.create_inside_out_great_table(df, selected_bank, selected_area)
                 if dataset is not None:  # Ensure dataset is not )
                     st.html(dataset.as_raw_html())
 
@@ -59,9 +59,7 @@ if selected_year != 'Select...':
                 if option == 'Loan Distribution Graph':
                     create_plotly_chart()
                 elif option == 'Loan Distribution Table':
-                    st.write(f" {selected_year} Loan Distribution for {selected_bank} in {selected_area}")
                     create_great_tables_table()
                 elif option == 'Assessment Area Distribution Table':
-                    st.write(f" {selected_year} Assessment Area Distribution Table for {selected_bank} in {selected_area}")
                     create_inside_out_table()
                     

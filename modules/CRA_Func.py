@@ -472,7 +472,7 @@ def fetch_loan_data_inside_out(engine, selected_bank, selected_year, md_code, ms
 
 
 
-def create_inside_out_great_table(df, engine):
+def create_inside_out_great_table(df, selected_bank, selected_area):
 
     df = df.sum()
 # Create a new dataframe with the specified rows and columns
@@ -542,7 +542,7 @@ def create_inside_out_great_table(df, engine):
         style=style.fill(color="lightcyan"),
         locations=loc.body(rows=[7]),
     )
-    .tab_header("Assessment Area Distribution")
+    .tab_header(title = "Assessment Area Distribution", subtitle=f"{selected_bank} in {selected_area}")
     .tab_spanner(label="Inside", columns=['b', 'h', 'c', 'i'])
     .tab_spanner(label="Outside", columns=['d', 'j', 'e', 'k'])
     .tab_spanner(label="Totals", columns=['f', 'l', 'g', 'm'])
