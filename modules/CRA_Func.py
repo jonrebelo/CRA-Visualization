@@ -573,3 +573,361 @@ def create_inside_out_great_table(df, selected_bank, selected_area):
     
 )
     return gt_instance
+
+
+def fetch_loan_data_bor_income(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code):
+
+    # Print the values of the variables
+    #print(f"Engine: {engine}")
+    #print(f"Selected bank: {selected_bank}")
+    #print(f"Selected year: {selected_year}")
+    print(f"MD Code: {md_code}")
+    print(f"MSA Code: {msa_code}")
+    #print(f"Selected area: {selected_area}")
+    print(f"State Code: {state_code}")
+    print(f"County Code: {county_code}")
+    print(f"Lookup method: {lookup_method}")
+
+    # Query the loan data for the selected bank, year, and assessment area from the Retail_Table
+    if lookup_method == 'md':
+        #print("Using MD Code for lookup")
+        query = f"""
+        SELECT 
+            Loan_Orig_SFam_Closed_BILow,
+            Loan_Orig_SFam_Closed_BIMod,
+            Loan_Orig_SFam_Closed,
+            Loan_Orig_SFam_Open_BILow,
+            Loan_Orig_SFam_Open_BIMod,
+            Loan_Orig_SFam_Open,
+            Loan_Orig_BILow,
+            Loan_Orig_BIMod,
+            Loan_Orig,
+            Agg_Loan_Orig_SFam_Closed_BILow,
+            Agg_Loan_Orig_SFam_Closed_BIMod,
+            Agg_Loan_Orig_SFam_Closed,
+            Agg_Loan_Orig_SFam_Open_BILow,
+            Agg_Loan_Orig_SFam_Open_BIMod,
+            Agg_Loan_Orig_SFam_Open,
+            Agg_Loan_Orig_BILow,
+            Agg_Loan_Orig_BIMod,
+            Agg_Loan_Orig,
+            Amt_Orig_SFam_Closed_BILow,
+            Amt_Orig_SFam_Closed_BIMod,
+            Amt_Orig_SFam_Closed,
+            Amt_Orig_SFam_Open_BILow,
+            Amt_Orig_SFam_Open_BIMod,
+            Amt_Orig_SFam_Open,
+            Amt_Orig_BILow,
+            Amt_Orig_BIMod,
+            Amt_Orig,
+            Agg_Amt_Orig_SFam_Closed_BILow,
+            Agg_Amt_Orig_SFam_Closed_BIMod,
+            Agg_Amt_Orig_SFam_Closed,
+            Agg_Amt_Orig_SFam_Open_BILow,
+            Agg_Amt_Orig_SFam_Open_BIMod,
+            Agg_Amt_Orig_SFam_Open,
+            Agg_Amt_Orig_BIMod,
+            Agg_Amt_Orig_BILow,
+            Agg_Amt_Orig,
+            State_Code,
+            County_Code
+        FROM Retail_Table 
+        WHERE 
+            id_rssd = (SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}') 
+            AND ActivityYear = {selected_year} 
+            AND MD_Code = '{md_code}';
+        """
+    elif lookup_method == 'msa':
+        #print("Using MSA Code for lookup")
+        query = f"""
+        SELECT 
+            Loan_Orig_SFam_Closed_BILow,
+            Loan_Orig_SFam_Closed_BIMod,
+            Loan_Orig_SFam_Closed,
+            Loan_Orig_SFam_Open_BILow,
+            Loan_Orig_SFam_Open_BIMod,
+            Loan_Orig_SFam_Open,
+            Loan_Orig_BILow,
+            Loan_Orig_BIMod,
+            Loan_Orig,
+            Agg_Loan_Orig_SFam_Closed_BILow,
+            Agg_Loan_Orig_SFam_Closed_BIMod,
+            Agg_Loan_Orig_SFam_Closed,
+            Agg_Loan_Orig_SFam_Open_BILow,
+            Agg_Loan_Orig_SFam_Open_BIMod,
+            Agg_Loan_Orig_SFam_Open,
+            Agg_Loan_Orig_BILow,
+            Agg_Loan_Orig_BIMod,
+            Agg_Loan_Orig,
+            Amt_Orig_SFam_Closed_BILow,
+            Amt_Orig_SFam_Closed_BIMod,
+            Amt_Orig_SFam_Closed,
+            Amt_Orig_SFam_Open_BILow,
+            Amt_Orig_SFam_Open_BIMod,
+            Amt_Orig_SFam_Open,
+            Amt_Orig_BILow,
+            Amt_Orig_BIMod,
+            Amt_Orig,
+            Agg_Amt_Orig_SFam_Closed_BILow,
+            Agg_Amt_Orig_SFam_Closed_BIMod,
+            Agg_Amt_Orig_SFam_Closed,
+            Agg_Amt_Orig_SFam_Open_BILow,
+            Agg_Amt_Orig_SFam_Open_BIMod,
+            Agg_Amt_Orig_SFam_Open,
+            Agg_Amt_Orig_BIMod,
+            Agg_Amt_Orig_BILow,
+            Agg_Amt_Orig,
+            State_Code,
+            County_Code
+        FROM Retail_Table 
+        WHERE 
+            id_rssd = (SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}') 
+            AND ActivityYear = {selected_year} 
+            AND MSA_Code = '{msa_code}';
+        """
+    else:  # lookup_method == 'state_county'
+        #print("Using State and County Code for lookup")
+        query = f"""
+        SELECT 
+            Loan_Orig_SFam_Closed_BILow,
+            Loan_Orig_SFam_Closed_BIMod,
+            Loan_Orig_SFam_Closed,
+            Loan_Orig_SFam_Open_BILow,
+            Loan_Orig_SFam_Open_BIMod,
+            Loan_Orig_SFam_Open,
+            Loan_Orig_BILow,
+            Loan_Orig_BIMod,
+            Loan_Orig,
+            Agg_Loan_Orig_SFam_Closed_BILow,
+            Agg_Loan_Orig_SFam_Closed_BIMod,
+            Agg_Loan_Orig_SFam_Closed,
+            Agg_Loan_Orig_SFam_Open_BILow,
+            Agg_Loan_Orig_SFam_Open_BIMod,
+            Agg_Loan_Orig_SFam_Open,
+            Agg_Loan_Orig_BILow,
+            Agg_Loan_Orig_BIMod,
+            Agg_Loan_Orig,
+            Amt_Orig_SFam_Closed_BILow,
+            Amt_Orig_SFam_Closed_BIMod,
+            Amt_Orig_SFam_Closed,
+            Amt_Orig_SFam_Open_BILow,
+            Amt_Orig_SFam_Open_BIMod,
+            Amt_Orig_SFam_Open,
+            Amt_Orig_BILow,
+            Amt_Orig_BIMod,
+            Amt_Orig,
+            Agg_Amt_Orig_SFam_Closed_BILow,
+            Agg_Amt_Orig_SFam_Closed_BIMod,
+            Agg_Amt_Orig_SFam_Closed,
+            Agg_Amt_Orig_SFam_Open_BILow,
+            Agg_Amt_Orig_SFam_Open_BIMod,
+            Agg_Amt_Orig_SFam_Open,
+            Agg_Amt_Orig_BIMod,
+            Agg_Amt_Orig_BILow,
+            Agg_Amt_Orig,
+            State_Code,
+            County_Code
+        FROM Retail_Table 
+        WHERE 
+            id_rssd = (SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}') 
+            AND ActivityYear = {selected_year} 
+            AND State_Code = {state_code} AND County_Code = {county_code};
+        """
+    # Create a Polars DataFrame
+    with engine.connect() as connection:
+        result = connection.execute(text(query))
+        rows = result.fetchall()
+        columns = result.keys()
+
+    # Create a list of dictionaries for constructing the DataFrame
+    data_dicts = [dict(zip(columns, row)) for row in rows]
+
+    # Debug: Print data_dicts
+    #print(f"Data Dicts: {data_dicts}")
+
+    # Create the Polars DataFrame
+    df = pl.DataFrame(data_dicts)
+
+    # Print the first few rows of the DataFrame
+    print(df.head())
+
+    return df
+
+
+def bor_income_table(df, selected_bank, selected_area):
+    df = df.sum()
+    df = df.to_pandas()
+    df = df.drop(['State_Code', 'County_Code'], axis=1)
+
+    # Define the new structure
+    income_levels = ['Low', 'Moderate', 'SubTotal', 'Low', 'Moderate', 'SubTotal']
+    counts = df[['Loan_Orig_SFam_Closed_BILow', 'Loan_Orig_SFam_Closed_BIMod', 'Loan_Orig_SFam_Closed', 'Loan_Orig_SFam_Open_BILow', 'Loan_Orig_SFam_Open_BIMod', 'Loan_Orig_SFam_Open']].values[0]
+    agg_counts = df[['Agg_Loan_Orig_SFam_Closed_BILow', 'Agg_Loan_Orig_SFam_Closed_BIMod', 'Agg_Loan_Orig_SFam_Closed', 'Agg_Loan_Orig_SFam_Open_BILow', 'Agg_Loan_Orig_SFam_Open_BIMod', 'Agg_Loan_Orig_SFam_Open']].values[0]
+    dollars = df[['Amt_Orig_SFam_Closed_BILow', 'Amt_Orig_SFam_Closed_BIMod', 'Amt_Orig_SFam_Closed', 'Amt_Orig_SFam_Open_BILow', 'Amt_Orig_SFam_Open_BIMod', 'Amt_Orig_SFam_Open']].values[0]
+    agg_dollars = df[['Agg_Amt_Orig_SFam_Closed_BILow', 'Agg_Amt_Orig_SFam_Closed_BIMod', 'Agg_Amt_Orig_SFam_Closed', 'Agg_Amt_Orig_SFam_Open_BILow', 'Agg_Amt_Orig_SFam_Open_BIMod', 'Agg_Amt_Orig_SFam_Open']].values[0]
+
+    # Create the new DataFrame
+    new_df = pd.DataFrame({
+        'Income Level': income_levels,
+        'Count': counts,
+        'Agg Count': agg_counts,
+        'Dollar': dollars,
+        'Agg Dollar': agg_dollars
+    })
+
+    new_df = pd.DataFrame({
+        'Income Level': income_levels,
+        'Count': counts,
+        'Agg Count': agg_counts,
+        'Dollar': dollars,
+        'Agg Dollar': agg_dollars
+    })
+
+    # Update rows 8 and 9 with the sums
+    low_values = new_df.loc[0, ['Count', 'Agg Count', 'Dollar', 'Agg Dollar']] + new_df.loc[3, ['Count', 'Agg Count', 'Dollar', 'Agg Dollar']]
+    moderate_values = new_df.loc[1, ['Count', 'Agg Count', 'Dollar', 'Agg Dollar']] + new_df.loc[4, ['Count', 'Agg Count', 'Dollar', 'Agg Dollar']]
+    
+    # Create the rows for 'Low' and 'Moderate'
+    low_row = pd.DataFrame({
+        'Income Level': ['Low'],
+        'Count': [low_values['Count']],
+        'Agg Count': [low_values['Agg Count']],
+        'Dollar': [low_values['Dollar']],
+        'Agg Dollar': [low_values['Agg Dollar']]
+    })
+    moderate_row = pd.DataFrame({
+        'Income Level': ['Moderate'],
+        'Count': [moderate_values['Count']],
+        'Agg Count': [moderate_values['Agg Count']],
+        'Dollar': [moderate_values['Dollar']],
+        'Agg Dollar': [moderate_values['Agg Dollar']]
+    })
+    
+    # Insert the rows into the DataFrame
+    new_df = pd.concat([new_df, low_row, moderate_row]).reset_index(drop=True)
+
+    print(new_df)
+
+    #Iterate over the DataFrame in steps of 3 (Low, Moderate, Total)
+    for i in range(2, len(new_df), 4):
+        # Calculate the 'Other' values
+        other_values = new_df.loc[i, ['Count', 'Agg Count', 'Dollar', 'Agg Dollar']] - new_df.loc[i-1, ['Count', 'Agg Count', 'Dollar', 'Agg Dollar']] - new_df.loc[i-2, ['Count', 'Agg Count', 'Dollar', 'Agg Dollar']]
+        # Create the 'Other' row
+        other_row = pd.DataFrame({
+            'Income Level': ['Other'],
+            'Count': [other_values['Count']],
+            'Agg Count': [other_values['Agg Count']],
+            'Dollar': [other_values['Dollar']],
+            'Agg Dollar': [other_values['Agg Dollar']]
+        })
+        # Insert the 'Other' row into the DataFrame
+        new_df = pd.concat([new_df.iloc[:i], other_row, new_df.iloc[i:]]).reset_index(drop=True)
+    
+    total_values = new_df.loc[3, ['Count', 'Agg Count', 'Dollar', 'Agg Dollar']] + new_df.loc[7, ['Count', 'Agg Count', 'Dollar', 'Agg Dollar']]
+    # Create the 'Total' row
+    total_row = pd.DataFrame({
+        'Income Level': ['Total'],
+        'Count': [total_values['Count']],
+        'Agg Count': [total_values['Agg Count']],
+        'Dollar': [total_values['Dollar']],
+        'Agg Dollar': [total_values['Agg Dollar']]
+    })
+    # Append the 'Total' row to the DataFrame
+    new_df = new_df._append(total_row, ignore_index=True)
+
+    other_values = new_df.loc[10, ['Count', 'Agg Count', 'Dollar', 'Agg Dollar']] - new_df.loc[9, ['Count', 'Agg Count', 'Dollar', 'Agg Dollar']] - new_df.loc[8, ['Count', 'Agg Count', 'Dollar', 'Agg Dollar']]
+    # Create the 'Other' row
+    other_row = pd.DataFrame({
+        'Income Level': ['Other'],
+        'Count': [other_values['Count']],
+        'Agg Count': [other_values['Agg Count']],
+        'Dollar': [other_values['Dollar']],
+        'Agg Dollar': [other_values['Agg Dollar']]
+    })
+    # Insert the 'Other' row into the DataFrame before the last 'Total' row
+    new_df = pd.concat([new_df.iloc[:-1], other_row, new_df.iloc[-1:]]).reset_index(drop=True)
+
+    # Add new columns for percentages
+    new_df['Count %'] = 0
+    new_df['Agg Count %'] = 0
+    new_df['Dollar %'] = 0
+    new_df['Agg Dollar %'] = 0
+
+# Calculate percentages
+    for i in range(len(new_df)):
+        if i < 4:
+            divisor = new_df.loc[3, ['Count', 'Agg Count', 'Dollar', 'Agg Dollar']]
+        elif i < 8:
+            divisor = new_df.loc[7, ['Count', 'Agg Count', 'Dollar', 'Agg Dollar']]
+        else:
+            divisor = new_df.loc[11, ['Count', 'Agg Count', 'Dollar', 'Agg Dollar']]
+
+        new_df.loc[i, 'Count %'] = new_df.loc[i, 'Count'] / divisor['Count']
+        new_df.loc[i, 'Agg Count %'] = new_df.loc[i, 'Agg Count'] / divisor['Agg Count']
+        new_df.loc[i, 'Dollar %'] = new_df.loc[i, 'Dollar'] / divisor['Dollar']
+        new_df.loc[i, 'Agg Dollar %'] = new_df.loc[i, 'Agg Dollar'] / divisor['Agg Dollar']
+
+    
+
+    column_order = ['Income Level', 'Count', 'Count %', 'Agg Count', 'Agg Count %', 'Dollar', 'Dollar %', 'Agg Dollar', 'Agg Dollar %']
+    new_df = new_df.reindex(columns=column_order)
+
+    new_df = new_df.fillna(0)
+
+    group_labels = ['Single Family Closed-End'] * 4 + ['Revolving'] * 4 + ['Totals'] * 4
+    new_df.insert(0, 'Group', group_labels)
+
+    print(new_df)
+
+    gt_instance = (
+    GT(new_df)
+    .opt_table_outline()
+    .opt_stylize(style = 2, color = "blue")
+    .tab_header(title = "Borrower Low-Moderate Income Distribution", subtitle = f"{selected_bank} in {selected_area}")
+    #.cols_label(column = 'Loan Type', column_0 = "Amount $(000's)" )
+    .fmt_percent(columns = ['Count %', 'Agg Count %', 'Dollar %' , 'Agg Dollar %'], decimals = 1)
+    .fmt_number(columns= ['Count', 'Agg Count', 'Dollar', 'Agg Dollar' ], use_seps = True, decimals = 0)
+    .tab_style(
+        style=style.text(weight="bold"),
+        locations=loc.body(columns="Income Level",rows=[3,7,11])
+    )
+    .tab_stub(rowname_col="Income Level", groupname_col="Group")
+    .tab_style(
+        style=style.text(style = "italic",),
+        locations=loc.body(rows=[3, 7]),
+    )
+    .tab_style(
+        style=style.fill(color="lightyellow"),
+        locations=loc.body(rows=[3, 7]),
+    )
+    .tab_style(
+        style=style.text( weight = "bold"),
+        locations=loc.body(rows=[11]),
+    )
+    .tab_style(
+        style=style.fill(color="lightcyan"),
+        locations=loc.body(rows=[11]),
+    )
+    .tab_options(
+    stub_font_weight="bold",       # Make stub text bold
+    stub_font_size="14px",         # Adjust stub font size if needed
+    stub_background_color="lightgray",  # Set stub background color if desired
+    stub_border_style="solid",     # Set stub border style
+    stub_border_color="gray",      # Set stub border color
+    row_group_font_weight="bold",      # Make row group labels bold
+    row_group_font_size="16px",        # Adjust row group font size if needed
+    row_group_background_color="lightblue",  # Set row group background color if desired
+    row_group_padding="8px",           # Add padding around row group labels
+    table_body_hlines_style="solid",
+    table_body_vlines_style="solid",
+    table_body_border_top_color="gray",
+    table_body_border_bottom_color="gray",
+    container_width = "100%"   
+    )
+    )
+
+    return gt_instance
+
+
+def tract_income_table(df, selected_bank, selected_area):
+    pass
