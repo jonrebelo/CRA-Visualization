@@ -7,14 +7,16 @@ This application is designed to parse and analyze information regarding Communit
 The application requires the following Python packages:
 
 - streamlit
-- st_aggrid
-- pandas
+- great_tables
+- polars
 - plotly
+- sqlalchemy
+- pandas
 
 You can install these packages using pip:
 
 ```bash
-conda install streamlit st_aggrid pandas plotly
+pip install streamlit polars great_tables plotly sqlalchemy pandas
 ```
 
 ### Functionality
@@ -38,7 +40,13 @@ This application is a rough first draft of a tool that could evolve into a great
 
 ##### Usage
 
-Download the data from https://www.federalreserve.gov/consumerscommunities/data_tables.htm. retail_loan_hmda_bank_total_2021.csv was used for this application.
+Download the data from https://www.federalreserve.gov/consumerscommunities/data_tables.htm. 
+
+retail_loan_lending_test.csv and performance_evaluation_table.csv were used for this application.
+
+Download MSA Tract data from https://www.ffiec.gov/. Click on MSA/MD state county tract crosswalk  to get the xlsx.
+
+Put both these files in the data folder.
 
 To run the application, navigate to main.py and in the command line enter "streamlit run" followed by the filepath of main.py. This will open a web page with the application in it.
 
