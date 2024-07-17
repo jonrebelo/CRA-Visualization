@@ -165,17 +165,6 @@ def fetch_loan_data_loan_dist(engine, selected_bank, selected_year, md_code, msa
 
 def fetch_loan_data_inside_out(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code):
 
-    # Print the values of the variables
-    #print(f"Engine: {engine}")
-    #print(f"Selected bank: {selected_bank}")
-    #print(f"Selected year: {selected_year}")
-    print(f"MD Code: {md_code}")
-    print(f"MSA Code: {msa_code}")
-    #print(f"Selected area: {selected_area}")
-    print(f"State Code: {state_code}")
-    print(f"County Code: {county_code}")
-    print(f"Lookup method: {lookup_method}")
-
     # Query the loan data for the selected bank, year, and assessment area from the Retail_Table
     if lookup_method == 'md':
         #print("Using MD Code for lookup")
@@ -297,17 +286,6 @@ def fetch_loan_data_inside_out(engine, selected_bank, selected_year, md_code, ms
     return df
 
 def fetch_loan_data_bor_income(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code):
-
-    # Print the values of the variables
-    #print(f"Engine: {engine}")
-    #print(f"Selected bank: {selected_bank}")
-    #print(f"Selected year: {selected_year}")
-    print(f"MD Code: {md_code}")
-    print(f"MSA Code: {msa_code}")
-    #print(f"Selected area: {selected_area}")
-    print(f"State Code: {state_code}")
-    print(f"County Code: {county_code}")
-    print(f"Lookup method: {lookup_method}")
 
     # Query the loan data for the selected bank, year, and assessment area from the Retail_Table
     if lookup_method == 'md':
@@ -476,17 +454,6 @@ def fetch_loan_data_bor_income(engine, selected_bank, selected_year, md_code, ms
 
 def fetch_loan_data_tract_income(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code):
 
-    # Print the values of the variables
-    #print(f"Engine: {engine}")
-    #print(f"Selected bank: {selected_bank}")
-    #print(f"Selected year: {selected_year}")
-    print(f"MD Code: {md_code}")
-    print(f"MSA Code: {msa_code}")
-    #print(f"Selected area: {selected_area}")
-    print(f"State Code: {state_code}")
-    print(f"County Code: {county_code}")
-    print(f"Lookup method: {lookup_method}")
-
     # Query the loan data for the selected bank, year, and assessment area from the Retail_Table
     if lookup_method == 'md':
         #print("Using MD Code for lookup")
@@ -660,6 +627,291 @@ def fetch_loan_data_tract_income(engine, selected_bank, selected_year, md_code, 
 			Agg_Amt_Orig_MFam,
 			Agg_Amt_Orig_TILow,
 			Agg_Amt_Orig_TIMod,
+            State_Code,
+            County_Code
+        FROM Retail_Table 
+        WHERE 
+            id_rssd = (SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}') 
+            AND ActivityYear = {selected_year} 
+            AND State_Code = {state_code} AND County_Code = {county_code};
+        """
+    # Create a Polars DataFrame
+    with engine.connect() as connection:
+        result = connection.execute(text(query))
+        rows = result.fetchall()
+        columns = result.keys()
+
+    # Create a list of dictionaries for constructing the DataFrame
+    data_dicts = [dict(zip(columns, row)) for row in rows]
+
+    # Debug: Print data_dicts
+    #print(f"Data Dicts: {data_dicts}")
+
+    # Create the Polars DataFrame
+    df = pl.DataFrame(data_dicts)
+
+    # Print the first few rows of the DataFrame
+    print(df.head())
+
+    return df
+
+def fetch_loan_data_business(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code):
+
+    # Query the loan data for the selected bank, year, and assessment area from the Retail_Table
+    if lookup_method == 'md':
+        #print("Using MD Code for lookup")
+        query = f"""
+        SELECT 
+            SB_Loan_Orig_TILow,
+			SB_Loan_Orig_TIMod,
+			SB_Loan_Orig,
+			Agg_SB_Loan_Purch_TILow,
+			Agg_SB_Loan_Orig_TIMod,
+			Agg_SB_Loan_Orig,
+			SF_Loan_Orig_TILow,
+			SF_Loan_Orig_TIMod,
+			SF_Loan_Orig,
+			Agg_SF_Loan_Orig_TILow,
+			Agg_SF_Loan_Orig_TIMod,
+			Agg_SF_Loan_Orig,
+            State_Code,
+            County_Code
+        FROM Retail_Table 
+        WHERE 
+            id_rssd = (SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}') 
+            AND ActivityYear = {selected_year} 
+            AND MD_Code = '{md_code}';
+        """
+    elif lookup_method == 'msa':
+        #print("Using MSA Code for lookup")
+        query = f"""
+        SELECT 
+            SB_Loan_Orig_TILow,
+			SB_Loan_Orig_TIMod,
+			SB_Loan_Orig,
+			Agg_SB_Loan_Purch_TILow,
+			Agg_SB_Loan_Orig_TIMod,
+			Agg_SB_Loan_Orig,
+			SF_Loan_Orig_TILow,
+			SF_Loan_Orig_TIMod,
+			SF_Loan_Orig,
+			Agg_SF_Loan_Orig_TILow,
+			Agg_SF_Loan_Orig_TIMod,
+			Agg_SF_Loan_Orig,
+            State_Code,
+            County_Code
+        FROM Retail_Table 
+        WHERE 
+            id_rssd = (SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}') 
+            AND ActivityYear = {selected_year} 
+            AND MSA_Code = '{msa_code}';
+        """
+    else:  # lookup_method == 'state_county'
+        #print("Using State and County Code for lookup")
+        query = f"""
+        SELECT 
+            SB_Loan_Orig_TILow,
+			SB_Loan_Orig_TIMod,
+			SB_Loan_Orig,
+			Agg_SB_Loan_Purch_TILow,
+			Agg_SB_Loan_Orig_TIMod,
+			Agg_SB_Loan_Orig,
+			SF_Loan_Orig_TILow,
+			SF_Loan_Orig_TIMod,
+			SF_Loan_Orig,
+			Agg_SF_Loan_Orig_TILow,
+			Agg_SF_Loan_Orig_TIMod,
+			Agg_SF_Loan_Orig,
+            State_Code,
+            County_Code
+        FROM Retail_Table 
+        WHERE 
+            id_rssd = (SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}') 
+            AND ActivityYear = {selected_year} 
+            AND State_Code = {state_code} AND County_Code = {county_code};
+        """
+    # Create a Polars DataFrame
+    with engine.connect() as connection:
+        result = connection.execute(text(query))
+        rows = result.fetchall()
+        columns = result.keys()
+
+    # Create a list of dictionaries for constructing the DataFrame
+    data_dicts = [dict(zip(columns, row)) for row in rows]
+
+    # Create the Polars DataFrame
+    df = pl.DataFrame(data_dicts)
+
+    # Print the first few rows of the DataFrame
+    print(df.head())
+
+    return df
+
+def fetch_loan_business_size(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code):
+
+    # Query the loan data for the selected bank, year, and assessment area from the Retail_Table
+    if lookup_method == 'md':
+        #print("Using MD Code for lookup")
+        query = f"""
+        SELECT 
+            SB_Loan_Orig_GAR_less_1m,
+			SB_Loan_Orig,
+			SF_Loan_Orig_GAR_less_1m,
+			SF_Loan_Orig,
+			Agg_SB_Loan_Orig_GAR_less_1m,
+			Agg_SB_Loan_Orig,
+			Agg_SF_Loan_Orig_GAR_less_1m,
+			Agg_SF_Loan_Orig,
+            State_Code,
+            County_Code
+        FROM Retail_Table 
+        WHERE 
+            id_rssd = (SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}') 
+            AND ActivityYear = {selected_year} 
+            AND MD_Code = '{md_code}';
+        """
+    elif lookup_method == 'msa':
+        #print("Using MSA Code for lookup")
+        query = f"""
+        SELECT 
+            SB_Loan_Orig_GAR_less_1m,
+			SB_Loan_Orig,
+			SF_Loan_Orig_GAR_less_1m,
+			SF_Loan_Orig,
+			Agg_SB_Loan_Orig_GAR_less_1m,
+			Agg_SB_Loan_Orig,
+			Agg_SF_Loan_Orig_GAR_less_1m,
+			Agg_SF_Loan_Orig,
+            State_Code,
+            County_Code
+        FROM Retail_Table 
+        WHERE 
+            id_rssd = (SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}') 
+            AND ActivityYear = {selected_year} 
+            AND MSA_Code = '{msa_code}';
+        """
+    else:  # lookup_method == 'state_county'
+        #print("Using State and County Code for lookup")
+        query = f"""
+        SELECT 
+            SB_Loan_Orig_GAR_less_1m,
+			SB_Loan_Orig,
+			SF_Loan_Orig_GAR_less_1m,
+			SF_Loan_Orig,
+			Agg_SB_Loan_Orig_GAR_less_1m,
+			Agg_SB_Loan_Orig,
+			Agg_SF_Loan_Orig_GAR_less_1m,
+			Agg_SF_Loan_Orig,
+            State_Code,
+            County_Code
+        FROM Retail_Table 
+        WHERE 
+            id_rssd = (SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}') 
+            AND ActivityYear = {selected_year} 
+            AND State_Code = {state_code} AND County_Code = {county_code};
+        """
+    # Create a Polars DataFrame
+    with engine.connect() as connection:
+        result = connection.execute(text(query))
+        rows = result.fetchall()
+        columns = result.keys()
+
+    # Create a list of dictionaries for constructing the DataFrame
+    data_dicts = [dict(zip(columns, row)) for row in rows]
+
+    # Create the Polars DataFrame
+    df = pl.DataFrame(data_dicts)
+
+    # Print the first few rows of the DataFrame
+    print(df.head())
+
+    return df
+
+def fetch_demographics(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code):
+
+    # Query the loan data for the selected bank, year, and assessment area from the Retail_Table
+    if lookup_method == 'md':
+        #print("Using MD Code for lookup")
+        query = f"""
+        SELECT 
+            Owner_Occupied_Units_TILow_Inside,
+			Owner_Occupied_Units_TIMod_Inside,
+			Owner_Occupied_Units_Inside,
+			Total5orMoreHousingUnitsInStructure_TILow_Inside,
+			Total5orMoreHousingUnitsInStructure_TIMod_Inside,
+			Total5orMoreHousingUnitsInStructure_Inside,
+			Low_Income_Family_Count_Inside,
+			Moderate_Income_Family_Count_Inside,
+			Family_Count_Inside,
+			Owner_Occupied_Units_TILow,
+			Owner_Occupied_Units_TIMod,
+			Owner_Occupied_Units,
+			Total5orMoreHousingUnitsInStructure_TILow,
+			Total5orMoreHousingUnitsInStructure_TIMod,
+			Total5orMoreHousingUnitsInStructure,
+			Low_Income_Family_Count,
+			Moderate_Income_Family_Count,
+			Family_Count,
+            State_Code,
+            County_Code
+        FROM Retail_Table 
+        WHERE 
+            id_rssd = (SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}') 
+            AND ActivityYear = {selected_year} 
+            AND MD_Code = '{md_code}';
+        """
+    elif lookup_method == 'msa':
+        #print("Using MSA Code for lookup")
+        query = f"""
+        SELECT 
+            Owner_Occupied_Units_TILow_Inside,
+			Owner_Occupied_Units_TIMod_Inside,
+			Owner_Occupied_Units_Inside,
+			Total5orMoreHousingUnitsInStructure_TILow_Inside,
+			Total5orMoreHousingUnitsInStructure_TIMod_Inside,
+			Total5orMoreHousingUnitsInStructure_Inside,
+			Low_Income_Family_Count_Inside,
+			Moderate_Income_Family_Count_Inside,
+			Family_Count_Inside,
+			Owner_Occupied_Units_TILow,
+			Owner_Occupied_Units_TIMod,
+			Owner_Occupied_Units,
+			Total5orMoreHousingUnitsInStructure_TILow,
+			Total5orMoreHousingUnitsInStructure_TIMod,
+			Total5orMoreHousingUnitsInStructure,
+			Low_Income_Family_Count,
+			Moderate_Income_Family_Count,
+			Family_Count,
+            State_Code,
+            County_Code
+        FROM Retail_Table 
+        WHERE 
+            id_rssd = (SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}') 
+            AND ActivityYear = {selected_year} 
+            AND MSA_Code = '{msa_code}';
+        """
+    else:  # lookup_method == 'state_county'
+        #print("Using State and County Code for lookup")
+        query = f"""
+        SELECT 
+            Owner_Occupied_Units_TILow_Inside,
+			Owner_Occupied_Units_TIMod_Inside,
+			Owner_Occupied_Units_Inside,
+			Total5orMoreHousingUnitsInStructure_TILow_Inside,
+			Total5orMoreHousingUnitsInStructure_TIMod_Inside,
+			Total5orMoreHousingUnitsInStructure_Inside,
+			Low_Income_Family_Count_Inside,
+			Moderate_Income_Family_Count_Inside,
+			Family_Count_Inside,
+			Owner_Occupied_Units_TILow,
+			Owner_Occupied_Units_TIMod,
+			Owner_Occupied_Units,
+			Total5orMoreHousingUnitsInStructure_TILow,
+			Total5orMoreHousingUnitsInStructure_TIMod,
+			Total5orMoreHousingUnitsInStructure,
+			Low_Income_Family_Count,
+			Moderate_Income_Family_Count,
+			Family_Count,
             State_Code,
             County_Code
         FROM Retail_Table 

@@ -215,8 +215,11 @@ def create_inside_out_great_table(df, selected_bank, selected_area):
     new_df['000s Total %'] = new_df['000s%'] + new_df['000s2%']
     new_df.fillna(0, inplace=True)
 
+    group_labels = ['Residential'] * 4 + ['Business'] * 3 + ['Total'] * 1
+    new_df.insert(0, 'Group', group_labels)
+
     new_df.columns = [
-        'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm'
+        'Group','a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm'
     ]
 
     # Create a Great Tables instance with the new dataframe
@@ -224,6 +227,7 @@ def create_inside_out_great_table(df, selected_bank, selected_area):
     GT(new_df)
     .opt_table_outline()
     .opt_stylize(style=2, color="blue")
+    .tab_stub(rowname_col="a", groupname_col="Group")
     .tab_style(
         style=style.text(style = "italic",),
         locations=loc.body(rows=[3, 6]),
@@ -246,6 +250,7 @@ def create_inside_out_great_table(df, selected_bank, selected_area):
     .tab_spanner(label="Totals", columns=['f', 'l', 'g', 'm'])
     .fmt_percent(columns=['h', 'i', 'j', 'k', 'l', 'm'], decimals=1)
     .fmt_number(columns=[ 'b', 'c', 'd', 'e', 'f', 'g' ], decimals=0, use_seps=True)
+    .cols_align(align="center", columns=[ 'Group','a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm'])
     .cols_label(a = "Loan Type",
                 b = "#",
                 c = '000s',
@@ -264,7 +269,16 @@ def create_inside_out_great_table(df, selected_bank, selected_area):
         table_body_vlines_style="solid",
         table_body_border_top_color="gray",
         table_body_border_bottom_color="gray",
-        container_width="100%"
+        container_width="100%",
+        stub_font_weight="bold",       # Make stub text bold
+        stub_font_size="14px",         # Adjust stub font size if needed
+        stub_background_color="lightgray",  # Set stub background color if desired
+        stub_border_style="solid",     # Set stub border style
+        stub_border_color="gray",      # Set stub border color
+        row_group_font_weight="bold",      # Make row group labels bold
+        row_group_font_size="16px",        # Adjust row group font size if needed
+        row_group_background_color="lightblue",  # Set row group background color if desired
+        row_group_padding="8px",           # Add padding around row group labels
     )
     .opt_vertical_padding(scale=1.5)
     .opt_horizontal_padding(scale=1.2)
@@ -292,15 +306,6 @@ def bor_income_table(df, selected_bank, selected_area):
         'Dollar': dollars,
         'Agg Dollar': agg_dollars
     })
-
-    new_df = pd.DataFrame({
-        'Income Level': income_levels,
-        'Count': counts,
-        'Agg Count': agg_counts,
-        'Dollar': dollars,
-        'Agg Dollar': agg_dollars
-    })
-
     # Update rows 8 and 9 with the sums
     low_values = new_df.loc[0, ['Count', 'Agg Count', 'Dollar', 'Agg Dollar']] + new_df.loc[3, ['Count', 'Agg Count', 'Dollar', 'Agg Dollar']]
     moderate_values = new_df.loc[1, ['Count', 'Agg Count', 'Dollar', 'Agg Dollar']] + new_df.loc[4, ['Count', 'Agg Count', 'Dollar', 'Agg Dollar']]
@@ -476,27 +481,17 @@ def tract_income_table(df, selected_bank, selected_area):
         'Agg Dollar': agg_dollars
     })
 
-    new_df = pd.DataFrame({
-        'Income Level': income_levels,
-        'Count': counts,
-        'Agg Count': agg_counts,
-        'Dollar': dollars,
-        'Agg Dollar': agg_dollars
-    })
-
     print(new_df)
 
     #Iterate over the DataFrame in steps of 4 (Low, Moderate, Total)
     for i in range(2, len(new_df), 4):
         # Calculate the 'Other' values
-        other_values = new_df.loc[i, ['Count', 'Agg Count', 'Dollar', 'Agg Dollar']] - new_df.loc[i-1, ['Count', 'Agg Count', 'Dollar', 'Agg Dollar']] - new_df.loc[i-2, ['Count', 'Agg Count', 'Dollar', 'Agg Dollar']]
+        other_values = new_df.loc[i, ['Count', 'Agg Count']] - new_df.loc[i-1, ['Count', 'Agg Count']] - new_df.loc[i-2, ['Count', 'Agg Count']]
         # Create the 'Other' row
         other_row = pd.DataFrame({
             'Income Level': ['Other'],
             'Count': [other_values['Count']],
-            'Agg Count': [other_values['Agg Count']],
-            'Dollar': [other_values['Dollar']],
-            'Agg Dollar': [other_values['Agg Dollar']]
+            'Agg Count': [other_values['Agg Count']]
         })
         # Insert the 'Other' row into the DataFrame
         new_df = pd.concat([new_df.iloc[:i], other_row, new_df.iloc[i:]]).reset_index(drop=True)
@@ -601,3 +596,327 @@ def tract_income_table(df, selected_bank, selected_area):
     )
 
     return gt_instance
+
+def business_tract_table(df, selected_bank, selected_area):
+    df = df.sum()
+    df = df.to_pandas()
+    df = df.drop(['State_Code', 'County_Code'], axis=1)
+
+    # Define the new structure
+    income_levels = ['Low', 'Moderate', 'SubTotal', 'Low', 'Moderate', 'SubTotal']
+    counts = df[['SB_Loan_Orig_TILow', 'SB_Loan_Orig_TIMod', 'SB_Loan_Orig', 'SF_Loan_Orig_TILow', 'SF_Loan_Orig_TIMod', 'SF_Loan_Orig']].values[0]
+    agg_counts = df[['Agg_SB_Loan_Purch_TILow', 'Agg_SB_Loan_Orig_TIMod', 'Agg_SB_Loan_Orig', 'Agg_SF_Loan_Orig_TILow', 'Agg_SF_Loan_Orig_TIMod', 'Agg_SF_Loan_Orig']].values[0]
+    
+
+    # Create the new DataFrame
+    new_df = pd.DataFrame({
+        'Income Level': income_levels,
+        'Count': counts,
+        'Agg Count': agg_counts,
+    })
+
+    low_values = new_df.loc[0, ['Count', 'Agg Count']] + new_df.loc[3, ['Count', 'Agg Count']]
+    moderate_values = new_df.loc[1, ['Count', 'Agg Count']] + new_df.loc[4, ['Count', 'Agg Count']]
+    
+    # Create the rows for 'Low' and 'Moderate'
+    low_row = pd.DataFrame({
+        'Income Level': ['Low'],
+        'Count': [low_values['Count']],
+        'Agg Count': [low_values['Agg Count']]
+    })
+    moderate_row = pd.DataFrame({
+        'Income Level': ['Moderate'],
+        'Count': [moderate_values['Count']],
+        'Agg Count': [moderate_values['Agg Count']]
+    })
+
+    # Insert the rows into the DataFrame
+    new_df = pd.concat([new_df, low_row, moderate_row]).reset_index(drop=True)
+
+    for i in range(2, len(new_df), 4):
+    # Calculate the 'Other' values
+        other_values = new_df.loc[i, ['Count', 'Agg Count']] - new_df.loc[i-1, ['Count', 'Agg Count']] - new_df.loc[i-2, ['Count', 'Agg Count']]
+        # Create the 'Other' row
+        other_row = pd.DataFrame({
+            'Income Level': ['Other'],
+            'Count': [other_values['Count']],
+            'Agg Count': [other_values['Agg Count']]
+        })
+        # Insert the 'Other' row into the DataFrame
+        new_df = pd.concat([new_df.iloc[:i], other_row, new_df.iloc[i:]]).reset_index(drop=True)
+
+    total_values = new_df.loc[3, ['Count', 'Agg Count']] + new_df.loc[7, ['Count', 'Agg Count']]
+    # Create the 'Total' row
+    total_row = pd.DataFrame({
+        'Income Level': ['Total'],
+        'Count': [total_values['Count']],
+        'Agg Count': [total_values['Agg Count']]
+    })
+    # Append the 'Total' row to the DataFrame
+    new_df = new_df._append(total_row, ignore_index=True)
+
+    other_values = new_df.loc[10, ['Count', 'Agg Count']] - new_df.loc[9, ['Count', 'Agg Count']] - new_df.loc[8, ['Count', 'Agg Count']]
+    # Create the 'Other' row
+    other_row = pd.DataFrame({
+        'Income Level': ['Other'],
+        'Count': [other_values['Count']],
+        'Agg Count': [other_values['Agg Count']],
+    })
+    # Insert the 'Other' row into the DataFrame before the last 'Total' row
+    new_df = pd.concat([new_df.iloc[:-1], other_row, new_df.iloc[-1:]]).reset_index(drop=True)
+
+    # Add new columns for percentages
+    new_df['Count %'] = 0
+    new_df['Agg Count %'] = 0
+
+# Calculate percentages
+    for i in range(len(new_df)):
+        if i < 4:
+            divisor = new_df.loc[3, ['Count', 'Agg Count']]
+        elif i < 8:
+            divisor = new_df.loc[7, ['Count', 'Agg Count']]
+        else:
+            divisor = new_df.loc[11, ['Count', 'Agg Count']]
+
+        new_df.loc[i, 'Count %'] = new_df.loc[i, 'Count'] / divisor['Count']
+        new_df.loc[i, 'Agg Count %'] = new_df.loc[i, 'Agg Count'] / divisor['Agg Count']
+
+    column_order = ['Income Level', 'Count', 'Count %', 'Agg Count', 'Agg Count %']
+    new_df = new_df.reindex(columns=column_order)
+
+    new_df = new_df.fillna(0)
+
+    group_labels = ['Small Business'] * 4 + ['Farm'] * 4 + ['Totals'] * 4
+    new_df.insert(0, 'Group', group_labels)
+
+    new_df.columns = [
+        'Group', 'Income Level', 'a', 'b', 'c', 'd']
+
+    print(new_df)
+
+    gt_instance = (
+    GT(new_df)
+    .opt_table_outline()
+    .opt_stylize(style = 2, color = "blue")
+    .tab_header(title = "Business Tract Lending", subtitle = f"{selected_bank} in {selected_area}")
+    .cols_label(a = '#', b = "%", c = "#", d="%")
+    .fmt_percent(columns = ['b', 'd'], decimals = 1)
+    .fmt_number(columns= ['a', 'c'], use_seps = True, decimals = 0)
+    .tab_style(
+        style=style.text(weight="bold"),
+        locations=loc.body(columns="Income Level",rows=[3,7,11])
+    )
+    .tab_stub(rowname_col="Income Level", groupname_col="Group")
+    .tab_style(
+        style=style.text(style = "italic",),
+        locations=loc.body(rows=[3, 7]),
+    )
+    .tab_style(
+        style=style.fill(color="lightyellow"),
+        locations=loc.body(rows=[3, 7]),
+    )
+    .tab_style(
+        style=style.text( weight = "bold"),
+        locations=loc.body(rows=[11]),
+    )
+    .tab_style(
+        style=style.fill(color="lightcyan"),
+        locations=loc.body(rows=[11]),
+    )
+    .tab_spanner(label="Bank Count", columns=['a', 'b'])
+    .tab_spanner(label="Agg Count", columns=['c', 'd'])
+    .cols_align(align="center", columns=['a', 'b', 'c', 'd'])
+    .tab_options(
+    stub_font_weight="bold",       # Make stub text bold
+    stub_font_size="14px",         # Adjust stub font size if needed
+    stub_background_color="lightgray",  # Set stub background color if desired
+    stub_border_style="solid",     # Set stub border style
+    stub_border_color="gray",      # Set stub border color
+    row_group_font_weight="bold",      # Make row group labels bold
+    row_group_font_size="16px",        # Adjust row group font size if needed
+    row_group_background_color="lightblue",  # Set row group background color if desired
+    row_group_padding="8px",           # Add padding around row group labels
+    table_body_hlines_style="solid",
+    table_body_vlines_style="solid",
+    table_body_border_top_color="gray",
+    table_body_border_bottom_color="gray",
+    container_width = "100%"   
+    )
+    )
+
+    return gt_instance
+
+def business_size_table(df, selected_bank, selected_area):
+
+    df = df.sum()
+    df = df.to_pandas()
+    df = df.drop(['State_Code', 'County_Code'], axis=1)
+
+    # Define the new structure
+    business_size = ['Small', 'SubTotal', 'Small', 'SubTotal']
+    counts = df[['SB_Loan_Orig_GAR_less_1m', 'SB_Loan_Orig', 'SF_Loan_Orig_GAR_less_1m', 'SF_Loan_Orig']].values[0]
+    agg_counts = df[['Agg_SB_Loan_Orig_GAR_less_1m', 'Agg_SB_Loan_Orig', 'Agg_SF_Loan_Orig_GAR_less_1m', 'Agg_SF_Loan_Orig']].values[0]
+
+    # Create the new DataFrame
+    new_df = pd.DataFrame({
+        'Business Size': business_size,
+        'Count': counts,
+        'Agg Count': agg_counts,
+    })
+
+    #Iterate over the DataFrame in steps of 3 (Low, Moderate, Total)
+    for i in range(1, len(new_df), 3):
+    # Calculate the 'Other' values
+        other_values = new_df.loc[i, ['Count', 'Agg Count']] - new_df.loc[i-1, ['Count', 'Agg Count']]
+        # Create the 'Other' row
+        other_row = pd.DataFrame({
+            'Business Size': ['Large'],
+            'Count': [other_values['Count']],
+            'Agg Count': [other_values['Agg Count']]
+        })
+        # Insert the 'Other' row into the DataFrame
+        new_df = pd.concat([new_df.iloc[:i], other_row, new_df.iloc[i:]]).reset_index(drop=True)
+
+    other_values = new_df.loc[4, ['Count', 'Agg Count']] - new_df.loc[3, ['Count', 'Agg Count']]
+    # Create the 'Other' row
+    other_row = pd.DataFrame({
+        'Business Size': ['Large'],
+        'Count': [other_values['Count']],
+        'Agg Count': [other_values['Agg Count']],
+    })
+    # Insert the 'Other' row into the DataFrame before the last 'Total' row
+    new_df = pd.concat([new_df.iloc[:-1], other_row, new_df.iloc[-1:]]).reset_index(drop=True)
+
+    small_values = new_df.loc[0, ['Count', 'Agg Count']] + new_df.loc[3, ['Count', 'Agg Count']]
+    large_values = new_df.loc[1, ['Count', 'Agg Count']] + new_df.loc[4, ['Count', 'Agg Count']]
+    
+    # Create the rows for 'Low' and 'Moderate'
+    small_row = pd.DataFrame({
+        'Business Size': ['Low'],
+        'Count': [small_values['Count']],
+        'Agg Count': [small_values['Agg Count']]
+    })
+    large_row = pd.DataFrame({
+        'Business Size': ['Moderate'],
+        'Count': [large_values['Count']],
+        'Agg Count': [large_values['Agg Count']]
+    })
+
+    # Insert the rows into the DataFrame
+    new_df = pd.concat([new_df, small_row, large_row]).reset_index(drop=True)
+
+    total_values = new_df.loc[2, ['Count', 'Agg Count']] + new_df.loc[5, ['Count', 'Agg Count']]
+    # Create the 'Total' row
+    total_row = pd.DataFrame({
+        'Business Size': ['Total'],
+        'Count': [total_values['Count']],
+        'Agg Count': [total_values['Agg Count']]
+    })
+    # Append the 'Total' row to the DataFrame
+    new_df = new_df._append(total_row, ignore_index=True)
+
+    print(new_df)
+
+    # Add new columns for percentages
+    new_df['Count %'] = 0
+    new_df['Agg Count %'] = 0
+
+# Calculate percentages
+    for i in range(len(new_df)):
+        if i < 3:
+            divisor = new_df.loc[2, ['Count', 'Agg Count']]
+        elif i < 6:
+            divisor = new_df.loc[5, ['Count', 'Agg Count']]
+        else:
+            divisor = new_df.loc[8, ['Count', 'Agg Count']]
+
+        new_df.loc[i, 'Count %'] = new_df.loc[i, 'Count'] / divisor['Count']
+        new_df.loc[i, 'Agg Count %'] = new_df.loc[i, 'Agg Count'] / divisor['Agg Count']
+
+    column_order = ['Business Size', 'Count', 'Count %', 'Agg Count', 'Agg Count %']
+    new_df = new_df.reindex(columns=column_order)
+
+    new_df = new_df.fillna(0)
+
+    group_labels = ['Business'] * 3 + ['Farm'] * 3 + ['Totals'] * 3
+    new_df.insert(0, 'Group', group_labels)
+
+    new_df.columns = [
+        'Group', 'Income Level', 'a', 'b', 'c', 'd']
+
+    print(new_df)
+
+    gt_instance = (
+    GT(new_df)
+    .opt_table_outline()
+    .opt_stylize(style = 2, color = "blue")
+    .tab_header(title = "Business Size Lending", subtitle = f"{selected_bank} in {selected_area}")
+    .cols_label(a = '#', b = "%", c = "#", d="%")
+    .fmt_percent(columns = ['b', 'd'], decimals = 1)
+    .fmt_number(columns= ['a', 'c'], use_seps = True, decimals = 0)
+    .tab_source_note(
+        source_note = "Large Business defined as those with Gross Annual Revenue greater than $1M"
+    )
+    .tab_style(
+        style=style.text(weight="bold"),
+        locations=loc.body(columns="Income Level",rows=[2,5,8])
+    )
+    .tab_stub(rowname_col="Income Level", groupname_col="Group")
+    .tab_style(
+        style=style.text(style = "italic",),
+        locations=loc.body(rows=[2, 5]),
+    )
+    .tab_style(
+        style=style.fill(color="lightyellow"),
+        locations=loc.body(rows=[2, 5]),
+    )
+    .tab_style(
+        style=style.text( weight = "bold"),
+        locations=loc.body(rows=[8]),
+    )
+    .tab_style(
+        style=style.fill(color="lightcyan"),
+        locations=loc.body(rows=[8]),
+    )
+    .tab_spanner(label="Bank Count", columns=['a', 'b'])
+    .tab_spanner(label="Agg Count", columns=['c', 'd'])
+    .cols_align(align="center", columns=['a', 'b', 'c', 'd'])
+    .tab_options(
+    stub_font_weight="bold",       # Make stub text bold
+    stub_font_size="14px",         # Adjust stub font size if needed
+    stub_background_color="lightgray",  # Set stub background color if desired
+    stub_border_style="solid",     # Set stub border style
+    stub_border_color="gray",      # Set stub border color
+    row_group_font_weight="bold",      # Make row group labels bold
+    row_group_font_size="16px",        # Adjust row group font size if needed
+    row_group_background_color="lightblue",  # Set row group background color if desired
+    row_group_padding="8px",           # Add padding around row group labels
+    table_body_hlines_style="solid",
+    table_body_vlines_style="solid",
+    table_body_border_top_color="gray",
+    table_body_border_bottom_color="gray",
+    container_width = "100%"   
+    )
+    )
+
+    return gt_instance
+
+def demographics_table(df, selected_bank, selected_area):
+    df = df.sum()
+    df = df.to_pandas()
+    df = df.drop(['State_Code', 'County_Code'], axis=1)
+
+    demo = ['OO_Low', '00_Mod', 'OO_Total', 'Units_Low', 'Units_Mod', 'Units_Total', 'Income_Low', 'Income_Mod','Family_Count']
+    inside_counts = df[['Owner_Occupied_Units_TILow_Inside', 'Owner_Occupied_Units_TIMod_Inside', 'Owner_Occupied_Units_Inside', 'Total5orMoreHousingUnitsInStructure_TILow_Inside', 'Total5orMoreHousingUnitsInStructure_TIMod_Inside','Total5orMoreHousingUnitsInStructure_Inside','Low_Income_Family_Count_Inside','Moderate_Income_Family_Count_Inside','Family_Count_Inside'
+    ]].values[0]
+    total_counts = df[['Owner_Occupied_Units_TILow','Owner_Occupied_Units_TIMod','Owner_Occupied_Units','Total5orMoreHousingUnitsInStructure_TILow','Total5orMoreHousingUnitsInStructure_TIMod','Total5orMoreHousingUnitsInStructure','Low_Income_Family_Count','Moderate_Income_Family_Count','Family_Count',
+    ]].values[0]
+
+    # Create the new DataFrame
+    new_df = pd.DataFrame({
+        'Demographic': demo,
+        'Count': inside_counts,
+        'Agg Count': total_counts,
+    })
+
+    print(new_df)
