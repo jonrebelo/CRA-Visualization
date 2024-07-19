@@ -1165,7 +1165,7 @@ def demographics_table(df, selected_bank, selected_area):
         style=style.fill(color="lightcyan"),
         locations=loc.body(rows=[2,5,8]),
     )
-    .tab_header(title = "Assessment Area Business Demographics", subtitle=f"{selected_bank} in {selected_area}")
+    .tab_header(title = "Assessment Area Residential Demographics", subtitle=f"{selected_bank} in {selected_area}")
     .tab_spanner(label="Inside", columns=['Count', 'Count_Per'])
     .tab_spanner(label="Outside", columns=['Count_Dif', 'Count_Dif_Per'])
     .tab_spanner(label="Totals", columns=['Agg_Count', 'Agg_Count_Per'])
