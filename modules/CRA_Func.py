@@ -916,7 +916,71 @@ def demographics_table(df, selected_bank, selected_area):
     new_df = pd.DataFrame({
         'Demographic': demo,
         'Count': inside_counts,
-        'Agg Count': total_counts,
+        'Agg_Count': total_counts,
     })
 
+    # Calculate the difference between 'Agg Count' and 'Count'
+    count_diff = new_df['Agg_Count'] - new_df['Count']
+
+    # Insert the 'Count_Dif' column at position 2
+    new_df.insert(2, 'Count_Dif', count_diff)
+
+    # Calculate the percentages
+    count_per = new_df['Count'] / new_df['Agg_Count']
+    count_dif_per = new_df['Count_Dif'] / new_df['Agg_Count']
+    agg_count_per = new_df['Agg_Count'] / new_df['Agg_Count']
+
+    # Insert the percentage columns
+    new_df.insert(2, 'Count_Per', count_per)
+    new_df.insert(4, 'Count_Dif_Per', count_dif_per)
+    new_df.insert(6, 'Agg_Count_Per', agg_count_per)
+
+    group_labels = ['Owner Occupied Units'] * 3 + ['Housing With 5+ Units'] * 3 + ['Family Counts'] * 3
+    new_df.insert(0, 'Group', group_labels)
+
+    new_df['Demographic'] = new_df['Demographic'].replace({'OO_Low': 'Low Income', '00_Mod': 'Moderate Income', 'OO_Total': 'Total', 'Units_Low': 'Low Income', 'Units_Mod': 'Moderate Income', 'Units_Total': 'Total', 'Income_Low': 'Low Income', 'Income_Mod': 'Moderate Income', 'Family_Count': 'Total'})
+
     print(new_df)
+
+    gt_instance = (
+    GT(new_df)
+    .opt_table_outline()
+    .opt_stylize(style=2, color="blue")
+    .tab_stub(rowname_col="Demographic", groupname_col="Group")
+    .tab_style(
+        style=style.text( weight = "bold"),
+        locations=loc.body(rows=[2,5,8]),
+    )
+    .tab_style(
+        style=style.fill(color="lightcyan"),
+        locations=loc.body(rows=[2,5,8]),
+    )
+    .tab_header(title = "Assessment Area Residential Demographics", subtitle=f"{selected_bank} in {selected_area}")
+    .tab_spanner(label="Inside", columns=['Count', 'Count_Per'])
+    .tab_spanner(label="Outside", columns=['Count_Dif', 'Count_Dif_Per'])
+    .tab_spanner(label="Totals", columns=['Agg_Count', 'Agg_Count_Per'])
+    .fmt_percent(columns=['Count_Per', 'Count_Dif_Per', 'Agg_Count_Per'], decimals=1)
+    .fmt_number(columns=[ 'Count', 'Count_Dif', 'Agg_Count' ], decimals=0, use_seps=True)
+    .cols_align(align="center", columns=[ 'Group','Demographic', 'Count', 'Count_Per', 'Count_Dif', 'Count_Dif_Per', 'Agg_Count', 'Agg_Count_Per'])
+    .cols_label(Count = '#', Count_Per = '%', Count_Dif = '#',Count_Dif_Per = '%', Agg_Count = '#', Agg_Count_Per= '%')
+    .tab_options(
+        table_body_hlines_style="solid",
+        table_body_vlines_style="solid",
+        table_body_border_top_color="gray",
+        table_body_border_bottom_color="gray",
+        container_width="100%",
+        stub_font_weight="bold",       # Make stub text bold
+        stub_font_size="14px",         # Adjust stub font size if needed
+        stub_background_color="lightgray",  # Set stub background color if desired
+        stub_border_style="solid",     # Set stub border style
+        stub_border_color="gray",      # Set stub border color
+        row_group_font_weight="bold",      # Make row group labels bold
+        row_group_font_size="16px",        # Adjust row group font size if needed
+        row_group_background_color="lightblue",  # Set row group background color if desired
+        row_group_padding="8px",           # Add padding around row group labels
+    )
+    .opt_vertical_padding(scale=1.5)
+    .opt_horizontal_padding(scale=1.2)
+    
+)
+    return gt_instance
