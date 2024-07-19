@@ -939,3 +939,135 @@ def fetch_demographics(engine, selected_bank, selected_year, md_code, msa_code, 
     print(df.head())
 
     return df
+
+
+def fetch_bus_demographics(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code):
+
+    # Query the loan data for the selected bank, year, and assessment area from the Retail_Table
+    if lookup_method == 'md':
+        #print("Using MD Code for lookup")
+        query = f"""
+        SELECT 
+            Establishments_Small_Business_TILow_Inside,
+			Establishments_Small_Business_TIMod_Inside,
+			Establishments_Small_Business_Inside,
+			Establishments_GAR_Less_1M_Small_Business_Inside,
+			Establishments_GAR_1_to_250k_Small_Business_Inside,
+			Establishments_GAR_250k_to_1M_Small_Business_Inside,
+			Establishments_Small_Farm_TILow_Inside,
+			Establishments_Small_Farm_TIMod_Inside,
+			Establishments_Small_Farm_Inside,
+			Establishments_GAR_Less_1M_Small_Farm_Inside,
+			Establishments_GAR_1_to_250k_Small_Farm_Inside,
+			Establishments_GAR_250k_to_1M_Small_Farm_Inside,
+			Establishments_Small_Business_TILow,
+			Establishments_Small_Business_TIMod,
+			Establishments_Small_Business,
+			Establishments_GAR_Less_1M_Small_Business,
+			Establishments_GAR_1_to_250k_Small_Business,
+			Establishments_GAR_250k_to_1M_Small_Business,
+			Establishments_Small_Farm_TILow,
+			Establishments_Small_Farm_TIMod,
+			Establishments_Small_Farm,
+			Establishments_GAR_Less_1M_Small_Farm,
+			Establishments_GAR_1_to_250k_Small_Farm,
+			Establishments_GAR_250k_to_1M_Small_Farm,
+            State_Code,
+            County_Code
+        FROM Retail_Table 
+        WHERE 
+            id_rssd = (SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}') 
+            AND ActivityYear = {selected_year} 
+            AND MD_Code = '{md_code}';
+        """
+    elif lookup_method == 'msa':
+        #print("Using MSA Code for lookup")
+        query = f"""
+        SELECT 
+            Establishments_Small_Business_TILow_Inside,
+			Establishments_Small_Business_TIMod_Inside,
+			Establishments_Small_Business_Inside,
+			Establishments_GAR_Less_1M_Small_Business_Inside,
+			Establishments_GAR_1_to_250k_Small_Business_Inside,
+			Establishments_GAR_250k_to_1M_Small_Business_Inside,
+			Establishments_Small_Farm_TILow_Inside,
+			Establishments_Small_Farm_TIMod_Inside,
+			Establishments_Small_Farm_Inside,
+			Establishments_GAR_Less_1M_Small_Farm_Inside,
+			Establishments_GAR_1_to_250k_Small_Farm_Inside,
+			Establishments_GAR_250k_to_1M_Small_Farm_Inside,
+			Establishments_Small_Business_TILow,
+			Establishments_Small_Business_TIMod,
+			Establishments_Small_Business,
+			Establishments_GAR_Less_1M_Small_Business,
+			Establishments_GAR_1_to_250k_Small_Business,
+			Establishments_GAR_250k_to_1M_Small_Business,
+			Establishments_Small_Farm_TILow,
+			Establishments_Small_Farm_TIMod,
+			Establishments_Small_Farm,
+			Establishments_GAR_Less_1M_Small_Farm,
+			Establishments_GAR_1_to_250k_Small_Farm,
+			Establishments_GAR_250k_to_1M_Small_Farm,
+            State_Code,
+            County_Code
+        FROM Retail_Table 
+        WHERE 
+            id_rssd = (SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}') 
+            AND ActivityYear = {selected_year} 
+            AND MSA_Code = '{msa_code}';
+        """
+    else:  # lookup_method == 'state_county'
+        #print("Using State and County Code for lookup")
+        query = f"""
+        SELECT 
+            Establishments_Small_Business_TILow_Inside,
+			Establishments_Small_Business_TIMod_Inside,
+			Establishments_Small_Business_Inside,
+			Establishments_GAR_Less_1M_Small_Business_Inside,
+			Establishments_GAR_1_to_250k_Small_Business_Inside,
+			Establishments_GAR_250k_to_1M_Small_Business_Inside,
+			Establishments_Small_Farm_TILow_Inside,
+			Establishments_Small_Farm_TIMod_Inside,
+			Establishments_Small_Farm_Inside,
+			Establishments_GAR_Less_1M_Small_Farm_Inside,
+			Establishments_GAR_1_to_250k_Small_Farm_Inside,
+			Establishments_GAR_250k_to_1M_Small_Farm_Inside,
+			Establishments_Small_Business_TILow,
+			Establishments_Small_Business_TIMod,
+			Establishments_Small_Business,
+			Establishments_GAR_Less_1M_Small_Business,
+			Establishments_GAR_1_to_250k_Small_Business,
+			Establishments_GAR_250k_to_1M_Small_Business,
+			Establishments_Small_Farm_TILow,
+			Establishments_Small_Farm_TIMod,
+			Establishments_Small_Farm,
+			Establishments_GAR_Less_1M_Small_Farm,
+			Establishments_GAR_1_to_250k_Small_Farm,
+			Establishments_GAR_250k_to_1M_Small_Farm,
+            State_Code,
+            County_Code
+        FROM Retail_Table 
+        WHERE 
+            id_rssd = (SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}') 
+            AND ActivityYear = {selected_year} 
+            AND State_Code = {state_code} AND County_Code = {county_code};
+        """
+    # Create a Polars DataFrame
+    with engine.connect() as connection:
+        result = connection.execute(text(query))
+        rows = result.fetchall()
+        columns = result.keys()
+
+    # Create a list of dictionaries for constructing the DataFrame
+    data_dicts = [dict(zip(columns, row)) for row in rows]
+
+    # Debug: Print data_dicts
+    #print(f"Data Dicts: {data_dicts}")
+
+    # Create the Polars DataFrame
+    df = pl.DataFrame(data_dicts)
+
+    # Print the first few rows of the DataFrame
+    print(df.head())
+
+    return df

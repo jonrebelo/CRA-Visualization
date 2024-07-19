@@ -29,7 +29,7 @@ if selected_year != 'Select...':
             md_code, msa_code, state_code, county_code, lookup_method = assessment_areas[selected_area]['codes']
 
             if selected_area != 'Select...':
-                options = ['Loan Distribution Graph', 'Loan Distribution Table', 'Assessment Area Distribution Table', 'Borrower Income Table', 'Tract Income Table', 'Business Tract Data', 'Business Size Data', 'Demographics']
+                options = ['Loan Distribution Graph', 'Loan Distribution Table', 'Assessment Area Distribution Table', 'Borrower Income Table', 'Tract Income Table', 'Business Tract Data', 'Business Size Data', 'Residential Demographics', 'Business Demographics']
                 selected_options = st.multiselect('Select the graphs and tables you want to display:', options)
                 st.markdown(f'<h1 style="font-size:30px;"> CRA Data for {selected_bank} - {selected_year} - {selected_area}</h1>', unsafe_allow_html=True)
             # Function to create Plotly chart
@@ -82,6 +82,12 @@ if selected_year != 'Select...':
                 if dataset is not None:  # Ensure dataset is not )
                     st.html(dataset.as_raw_html())
 
+            def create_business_demographics_table():
+                df = SQL.fetch_bus_demographics(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code)
+                dataset = CRA.business_demographics_table(df, selected_bank, selected_area)
+                if dataset is not None:  # Ensure dataset is not )
+                    st.html(dataset.as_raw_html())
+
             # Display the selected graphs and tables
             for option in selected_options:
                 if option == 'Loan Distribution Graph':
@@ -98,5 +104,7 @@ if selected_year != 'Select...':
                     create_tract_business_table()
                 elif option == 'Business Size Data':
                     create_business_size_table()
-                elif option == 'Demographics':
+                elif option == 'Residential Demographics':
                     create_demographics_table()
+                elif option == 'Business Demographics':
+                    create_business_demographics_table()

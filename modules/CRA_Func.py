@@ -753,7 +753,7 @@ def business_size_table(df, selected_bank, selected_area):
     df = df.drop(['State_Code', 'County_Code'], axis=1)
 
     # Define the new structure
-    business_size = ['Small', 'SubTotal', 'Small', 'SubTotal']
+    business_size = ['Less than $1M', 'SubTotal', 'Less than $1M', 'SubTotal']
     counts = df[['SB_Loan_Orig_GAR_less_1m', 'SB_Loan_Orig', 'SF_Loan_Orig_GAR_less_1m', 'SF_Loan_Orig']].values[0]
     agg_counts = df[['Agg_SB_Loan_Orig_GAR_less_1m', 'Agg_SB_Loan_Orig', 'Agg_SF_Loan_Orig_GAR_less_1m', 'Agg_SF_Loan_Orig']].values[0]
 
@@ -770,7 +770,7 @@ def business_size_table(df, selected_bank, selected_area):
         other_values = new_df.loc[i, ['Count', 'Agg Count']] - new_df.loc[i-1, ['Count', 'Agg Count']]
         # Create the 'Other' row
         other_row = pd.DataFrame({
-            'Business Size': ['Large'],
+            'Business Size': ['Greater than $1M'],
             'Count': [other_values['Count']],
             'Agg Count': [other_values['Agg Count']]
         })
@@ -780,7 +780,7 @@ def business_size_table(df, selected_bank, selected_area):
     other_values = new_df.loc[4, ['Count', 'Agg Count']] - new_df.loc[3, ['Count', 'Agg Count']]
     # Create the 'Other' row
     other_row = pd.DataFrame({
-        'Business Size': ['Large'],
+        'Business Size': ['Greater than $1M'],
         'Count': [other_values['Count']],
         'Agg Count': [other_values['Agg Count']],
     })
@@ -792,12 +792,12 @@ def business_size_table(df, selected_bank, selected_area):
     
     # Create the rows for 'Low' and 'Moderate'
     small_row = pd.DataFrame({
-        'Business Size': ['Low'],
+        'Business Size': ['Less than $1M'],
         'Count': [small_values['Count']],
         'Agg Count': [small_values['Agg Count']]
     })
     large_row = pd.DataFrame({
-        'Business Size': ['Moderate'],
+        'Business Size': ['Greater than $1M'],
         'Count': [large_values['Count']],
         'Agg Count': [large_values['Agg Count']]
     })
@@ -838,7 +838,7 @@ def business_size_table(df, selected_bank, selected_area):
 
     new_df = new_df.fillna(0)
 
-    group_labels = ['Business'] * 3 + ['Farm'] * 3 + ['Totals'] * 3
+    group_labels = ['Business Size (By Revenue)'] * 3 + ['Farm Size (By Revenue)'] * 3 + ['Totals'] * 3
     new_df.insert(0, 'Group', group_labels)
 
     new_df.columns = [
@@ -854,9 +854,6 @@ def business_size_table(df, selected_bank, selected_area):
     .cols_label(a = '#', b = "%", c = "#", d="%")
     .fmt_percent(columns = ['b', 'd'], decimals = 1)
     .fmt_number(columns= ['a', 'c'], use_seps = True, decimals = 0)
-    .tab_source_note(
-        source_note = "Large Business defined as those with Gross Annual Revenue greater than $1M"
-    )
     .tab_style(
         style=style.text(weight="bold"),
         locations=loc.body(columns="Income Level",rows=[2,5,8])
@@ -878,8 +875,8 @@ def business_size_table(df, selected_bank, selected_area):
         style=style.fill(color="lightcyan"),
         locations=loc.body(rows=[8]),
     )
-    .tab_spanner(label="Bank Count", columns=['a', 'b'])
-    .tab_spanner(label="Agg Count", columns=['c', 'd'])
+    .tab_spanner(label="Bank Loan Count", columns=['a', 'b'])
+    .tab_spanner(label="Agg Loan Count", columns=['c', 'd'])
     .cols_align(align="center", columns=['a', 'b', 'c', 'd'])
     .tab_options(
     stub_font_weight="bold",       # Make stub text bold
@@ -956,6 +953,219 @@ def demographics_table(df, selected_bank, selected_area):
         locations=loc.body(rows=[2,5,8]),
     )
     .tab_header(title = "Assessment Area Residential Demographics", subtitle=f"{selected_bank} in {selected_area}")
+    .tab_spanner(label="Inside", columns=['Count', 'Count_Per'])
+    .tab_spanner(label="Outside", columns=['Count_Dif', 'Count_Dif_Per'])
+    .tab_spanner(label="Totals", columns=['Agg_Count', 'Agg_Count_Per'])
+    .fmt_percent(columns=['Count_Per', 'Count_Dif_Per', 'Agg_Count_Per'], decimals=1)
+    .fmt_number(columns=[ 'Count', 'Count_Dif', 'Agg_Count' ], decimals=0, use_seps=True)
+    .cols_align(align="center", columns=[ 'Group','Demographic', 'Count', 'Count_Per', 'Count_Dif', 'Count_Dif_Per', 'Agg_Count', 'Agg_Count_Per'])
+    .cols_label(Count = '#', Count_Per = '%', Count_Dif = '#',Count_Dif_Per = '%', Agg_Count = '#', Agg_Count_Per= '%')
+    .tab_options(
+        table_body_hlines_style="solid",
+        table_body_vlines_style="solid",
+        table_body_border_top_color="gray",
+        table_body_border_bottom_color="gray",
+        container_width="100%",
+        stub_font_weight="bold",       # Make stub text bold
+        stub_font_size="14px",         # Adjust stub font size if needed
+        stub_background_color="lightgray",  # Set stub background color if desired
+        stub_border_style="solid",     # Set stub border style
+        stub_border_color="gray",      # Set stub border color
+        row_group_font_weight="bold",      # Make row group labels bold
+        row_group_font_size="16px",        # Adjust row group font size if needed
+        row_group_background_color="lightblue",  # Set row group background color if desired
+        row_group_padding="8px",           # Add padding around row group labels
+    )
+    .opt_vertical_padding(scale=1.5)
+    .opt_horizontal_padding(scale=1.2)
+    
+)
+    return gt_instance
+
+def business_demographics_table(df, selected_bank, selected_area):
+    df = df.sum()
+    df = df.to_pandas()
+    df = df.drop(['State_Code', 'County_Code'], axis=1)
+
+    demo = ['SB_Low', 'SB_Mod', 'SB_Total', 'All_Small', 'Low_Rev', 'Middle_Rev', 'SF_Low', 'SF_Mod', 'SF_Total', 'SF_All_Small', 'SF_Low_Rev', 'SF_Middle_Rev']
+
+    inside_counts = df[[
+    'Establishments_Small_Business_TILow_Inside',
+    'Establishments_Small_Business_TIMod_Inside',
+    'Establishments_Small_Business_Inside',
+    'Establishments_GAR_Less_1M_Small_Business_Inside','Establishments_GAR_1_to_250k_Small_Business_Inside','Establishments_GAR_250k_to_1M_Small_Business_Inside',
+    'Establishments_Small_Farm_TILow_Inside',
+    'Establishments_Small_Farm_TIMod_Inside',
+    'Establishments_Small_Farm_Inside',
+    'Establishments_GAR_Less_1M_Small_Farm_Inside',
+    'Establishments_GAR_1_to_250k_Small_Farm_Inside',
+    'Establishments_GAR_250k_to_1M_Small_Farm_Inside'
+    ]].values[0]
+
+    total_counts = df[[
+    'Establishments_Small_Business_TILow',
+    'Establishments_Small_Business_TIMod',
+    'Establishments_Small_Business',
+    'Establishments_GAR_Less_1M_Small_Business',
+    'Establishments_GAR_1_to_250k_Small_Business',
+    'Establishments_GAR_250k_to_1M_Small_Business',
+    'Establishments_Small_Farm_TILow',
+    'Establishments_Small_Farm_TIMod',
+    'Establishments_Small_Farm',
+    'Establishments_GAR_Less_1M_Small_Farm',
+    'Establishments_GAR_1_to_250k_Small_Farm',
+    'Establishments_GAR_250k_to_1M_Small_Farm'
+    ]].values[0]
+
+    # Create the new DataFrame
+    new_df = pd.DataFrame({
+        'Demographic': demo,
+        'Count': inside_counts,
+        'Agg_Count': total_counts,
+    })
+
+    print(new_df)
+
+    new_rows_1 = pd.DataFrame({
+    'Demographic': ['SB_1M'],
+    'Count': [
+        (df['Establishments_Small_Business_Inside'] - df['Establishments_GAR_Less_1M_Small_Business_Inside']).values[0]
+    ],
+    'Agg_Count': [
+        (df['Establishments_Small_Business'] - df['Establishments_GAR_Less_1M_Small_Business']).values[0]
+    ]
+})
+
+    new_rows_2 = pd.DataFrame({
+    'Demographic': ['SF_1M'],
+    'Count': [
+        (df['Establishments_Small_Farm_Inside'] - df['Establishments_GAR_Less_1M_Small_Farm_Inside']).values[0]
+    ],
+    'Agg_Count': [
+        (df['Establishments_Small_Farm'] - df['Establishments_GAR_Less_1M_Small_Farm']).values[0]
+    ]
+})
+
+    # Concatenate the new rows with the existing DataFrame
+    # Insert new_rows_1 at the 6th index
+    new_df = pd.concat([new_df.iloc[:6], new_rows_1, new_df.iloc[6:]], ignore_index=True)
+
+    # Append new_rows_2 to the end of the DataFrame
+    new_df = pd.concat([new_df, new_rows_2], ignore_index=True)
+
+    # Calculate the difference between 'Agg Count' and 'Count'
+    count_diff = new_df['Agg_Count'] - new_df['Count']
+
+    # Insert the 'Count_Dif' column at position 2
+    new_df.insert(2, 'Count_Dif', count_diff)
+
+    # Calculate the percentages
+    count_per = new_df['Count'] / new_df['Agg_Count']
+    count_dif_per = new_df['Count_Dif'] / new_df['Agg_Count']
+    agg_count_per = new_df['Agg_Count'] / new_df['Agg_Count']
+
+    # Insert the percentage columns
+    new_df.insert(2, 'Count_Per', count_per)
+    new_df.insert(4, 'Count_Dif_Per', count_dif_per)
+    new_df.insert(6, 'Agg_Count_Per', agg_count_per)
+    new_df['Demographic'] = new_df['Demographic'].replace({'SB_Low': 'Low Income', 'SB_Mod': 'Moderate Income', 'SB_Total': 'All', 'All_Small': 'Less Than $1M', 'Low_Rev': '$1-$250k', 'Middle_Rev': '$250k-$1Mil', 'SB_1M': 'Over $1M', 'SF_Low': 'Low Income', 'SF_Mod': 'Moderate Income', 'SF_Total': 'All', 'SF_All_Small': 'Less Than $1M', 'SF_Low_Rev': '$1-$250k', 'SF_Middle_Rev': '$250k-$1Mil', 'SF_1M': 'Over $1M',})
+
+
+    group_labels = ['Businesses Count by Income Tract'] * 3 + ['Business Size (By Revenue)'] * 4 + ['Farm Count By Income Tract'] * 3 + ['Farm Size (By Revenue)'] * 4
+    new_df.insert(0, 'Group', group_labels)
+    new_df = new_df.fillna(0)
+    print(new_df)
+
+    gt_instance = (
+    GT(new_df)
+    .opt_table_outline()
+    .opt_stylize(style=2, color="blue")
+    .tab_stub(rowname_col="Demographic", groupname_col="Group")
+    .tab_header(title = "Assessment Area Business Demographics", subtitle=f"{selected_bank} in {selected_area}")
+    .tab_spanner(label="Inside", columns=['Count', 'Count_Per'])
+    .tab_spanner(label="Outside", columns=['Count_Dif', 'Count_Dif_Per'])
+    .tab_spanner(label="Totals", columns=['Agg_Count', 'Agg_Count_Per'])
+    .fmt_percent(columns=['Count_Per', 'Count_Dif_Per', 'Agg_Count_Per'], decimals=1)
+    .fmt_number(columns=[ 'Count', 'Count_Dif', 'Agg_Count' ], decimals=0, use_seps=True)
+    .cols_align(align="center", columns=[ 'Group','Demographic', 'Count', 'Count_Per', 'Count_Dif', 'Count_Dif_Per', 'Agg_Count', 'Agg_Count_Per'])
+    .cols_label(Count = '#', Count_Per = '%', Count_Dif = '#',Count_Dif_Per = '%', Agg_Count = '#', Agg_Count_Per= '%')
+    .tab_options(
+        table_body_hlines_style="solid",
+        table_body_vlines_style="solid",
+        table_body_border_top_color="gray",
+        table_body_border_bottom_color="gray",
+        container_width="100%",
+        stub_font_weight="bold",       # Make stub text bold
+        stub_font_size="14px",         # Adjust stub font size if needed
+        stub_background_color="lightgray",  # Set stub background color if desired
+        stub_border_style="solid",     # Set stub border style
+        stub_border_color="gray",      # Set stub border color
+        row_group_font_weight="bold",      # Make row group labels bold
+        row_group_font_size="16px",        # Adjust row group font size if needed
+        row_group_background_color="lightblue",  # Set row group background color if desired
+        row_group_padding="8px",           # Add padding around row group labels
+    )
+    .opt_vertical_padding(scale=1.5)
+    .opt_horizontal_padding(scale=1.2)
+    
+)
+    return gt_instance
+
+def demographics_table(df, selected_bank, selected_area):
+    df = df.sum()
+    df = df.to_pandas()
+    df = df.drop(['State_Code', 'County_Code'], axis=1)
+
+    demo = ['OO_Low', '00_Mod', 'OO_Total', 'Units_Low', 'Units_Mod', 'Units_Total', 'Income_Low', 'Income_Mod','Family_Count']
+    inside_counts = df[['Owner_Occupied_Units_TILow_Inside', 'Owner_Occupied_Units_TIMod_Inside', 'Owner_Occupied_Units_Inside', 'Total5orMoreHousingUnitsInStructure_TILow_Inside', 'Total5orMoreHousingUnitsInStructure_TIMod_Inside','Total5orMoreHousingUnitsInStructure_Inside','Low_Income_Family_Count_Inside','Moderate_Income_Family_Count_Inside','Family_Count_Inside'
+    ]].values[0]
+    total_counts = df[['Owner_Occupied_Units_TILow','Owner_Occupied_Units_TIMod','Owner_Occupied_Units','Total5orMoreHousingUnitsInStructure_TILow','Total5orMoreHousingUnitsInStructure_TIMod','Total5orMoreHousingUnitsInStructure','Low_Income_Family_Count','Moderate_Income_Family_Count','Family_Count',
+    ]].values[0]
+
+    # Create the new DataFrame
+    new_df = pd.DataFrame({
+        'Demographic': demo,
+        'Count': inside_counts,
+        'Agg_Count': total_counts,
+    })
+
+    # Calculate the difference between 'Agg Count' and 'Count'
+    count_diff = new_df['Agg_Count'] - new_df['Count']
+
+    # Insert the 'Count_Dif' column at position 2
+    new_df.insert(2, 'Count_Dif', count_diff)
+
+    # Calculate the percentages
+    count_per = new_df['Count'] / new_df['Agg_Count']
+    count_dif_per = new_df['Count_Dif'] / new_df['Agg_Count']
+    agg_count_per = new_df['Agg_Count'] / new_df['Agg_Count']
+
+    # Insert the percentage columns
+    new_df.insert(2, 'Count_Per', count_per)
+    new_df.insert(4, 'Count_Dif_Per', count_dif_per)
+    new_df.insert(6, 'Agg_Count_Per', agg_count_per)
+
+    group_labels = ['Owner Occupied Units'] * 3 + ['Housing With 5+ Units'] * 3 + ['Family Counts'] * 3
+    new_df.insert(0, 'Group', group_labels)
+
+    new_df['Demographic'] = new_df['Demographic'].replace({'OO_Low': 'Low Income', '00_Mod': 'Moderate Income', 'OO_Total': 'Total', 'Units_Low': 'Low Income', 'Units_Mod': 'Moderate Income', 'Units_Total': 'Total', 'Income_Low': 'Low Income', 'Income_Mod': 'Moderate Income', 'Family_Count': 'Total'})
+
+    print(new_df)
+
+    gt_instance = (
+    GT(new_df)
+    .opt_table_outline()
+    .opt_stylize(style=2, color="blue")
+    .tab_stub(rowname_col="Demographic", groupname_col="Group")
+    .tab_style(
+        style=style.text( weight = "bold"),
+        locations=loc.body(rows=[2,5,8]),
+    )
+    .tab_style(
+        style=style.fill(color="lightcyan"),
+        locations=loc.body(rows=[2,5,8]),
+    )
+    .tab_header(title = "Assessment Area Business Demographics", subtitle=f"{selected_bank} in {selected_area}")
     .tab_spanner(label="Inside", columns=['Count', 'Count_Per'])
     .tab_spanner(label="Outside", columns=['Count_Dif', 'Count_Dif_Per'])
     .tab_spanner(label="Totals", columns=['Agg_Count', 'Agg_Count_Per'])
