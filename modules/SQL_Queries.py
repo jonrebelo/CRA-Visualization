@@ -1071,3 +1071,53 @@ def fetch_bus_demographics(engine, selected_bank, selected_year, md_code, msa_co
     print(df.head())
 
     return df
+
+def fetch_loan_data_overall(engine, selected_bank, selected_year):
+
+    # Query the loan data for the selected bank and year from the Retail_Table
+    query = f"""
+    SELECT      
+		cra_current_year_assets,
+		cra_previous_year_assets,
+		hmda_assets,
+		number_of_branches,
+		bank_county_deposits,
+		Lender_in_CRA,
+		Lender_in_HMDA,
+		id_rssd,
+		Amt_Orig_SFam_Closed, 
+        Amt_Orig_SFam_Open, 
+        Amt_Orig_MFam, 
+        SF_Amt_Orig, 
+        SB_Amt_Orig, 
+        Amt_Orig,
+        Partial_Ind,
+		Loan_Orig_SFam_Closed_Inside, 
+        Loan_Orig_SFam_Open_Inside, 
+        Loan_Orig_MFam_Inside, 
+        SB_Loan_Orig_Inside, 
+        SF_Loan_Orig_Inside, 
+        Amt_Orig_SFam_Closed_Inside,
+        Amt_Orig_SFam_Open_Inside,
+        Amt_Orig_MFam_Inside,
+        SB_Amt_Orig_Inside,
+        SF_Amt_Orig_Inside,
+        Loan_Orig_SFam_Closed,
+        Loan_Orig_SFam_Open,
+        Loan_Orig_MFam,
+		MSA_Code,
+		MD_Code,
+        State_Code,
+        County_Code
+		
+    FROM Retail_Table 
+    WHERE 
+        id_rssd = (SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}') 
+        AND ActivityYear = {selected_year};
+    """
+    df = pl.read_database(query, engine)
+
+    # Print the first few rows of the DataFrame
+    print(df.head())
+
+    return df
