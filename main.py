@@ -19,7 +19,13 @@ if selected_year != 'Select...':
 
         if report_type == 'Overall':
             st.write("Placeholder for Overall report page.")
-            # Add your function calls or placeholder content for the "Overall" page here
+            df = SQL.fetch_loan_data_overall(engine, selected_bank, selected_year)
+            loan_dist = CRA.overall_distribution_great_tables(df, selected_bank)
+            st.html(loan_dist.as_raw_html())
+            inside_out = CRA.overall_inside_out_great_table(df, selected_bank)
+            st.html(inside_out.as_raw_html())
+            top_areas = CRA.top_areas(engine, df, selected_bank, selected_year)
+            #st.html(top_areas.as_raw_html())
         else:
             selected_options = []  # Initialize selected_options to an empty list
             assessment_areas = SQL.fetch_assessment_area(engine, selected_bank, selected_year)
