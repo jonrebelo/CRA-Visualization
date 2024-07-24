@@ -25,7 +25,7 @@ if selected_year != 'Select...':
             inside_out = CRA.overall_inside_out_great_table(df, selected_bank)
             st.html(inside_out.as_raw_html())
             top_areas = CRA.top_areas(engine, df, selected_bank, selected_year)
-            #st.html(top_areas.as_raw_html())
+            st.html(top_areas.as_raw_html())
         else:
             selected_options = []  # Initialize selected_options to an empty list
             assessment_areas = SQL.fetch_assessment_area(engine, selected_bank, selected_year)
@@ -34,7 +34,6 @@ if selected_year != 'Select...':
                 assessment_areas = {'No assessment areas found': {'codes': ('nan', 'nan', 'nan', 'nan', 'nan'), 'lookup_method': 'nan'}}
                 st.write("No assessment areas found for the selected bank and year.")
             else:
-                # Add 'Overall' option to the list
                 assessment_areas = {'Select...': {'codes': ('nan', 'nan', 'nan', 'nan', 'nan'), 'lookup_method': 'nan'}, **assessment_areas}
 
                 # Create a dropdown menu for assessment areas

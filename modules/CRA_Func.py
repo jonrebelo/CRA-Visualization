@@ -1445,7 +1445,7 @@ def overall_inside_out_great_table(df, selected_bank):
     return gt_instance
 
 def fetch_assessment_area(engine, selected_bank, selected_year):
-    query = f"SELECT MD_Code, MSA_Code, State_Code, County_Code FROM Retail_Table WHERE id_rssd = (SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}')"
+    query = f"SELECT MD_Code, MSA_Code, State_Code, County_Code FROM Retail_Table WHERE id_rssd = (SELECT id_rssd FROM PE_Table WHERE bank_name = '{selected_bank}') AND ActivityYear = {selected_year};"
     df = pl.read_database(query, engine)
     #print(f"Initial query result: {df}")
 
@@ -1509,11 +1509,74 @@ def fetch_assessment_area(engine, selected_bank, selected_year):
     if not assessment_areas:
         print("No matching records found")
         return None
-
-    #print(f"Assessment areas: {assessment_areas}")
+    
+    print(f"Assessment areas found: {assessment_areas}")
+    
     return assessment_areas
 
+def create_mapping_dict(assessment_areas):
+    code_to_area = {}
+    
+    for area_name, details in assessment_areas.items():
+        codes = details['codes']
+        lookup_method = codes[-1]  # The last item in codes tuple is the lookup method
+        md_code, msa_code, state_code, county_code = codes[:4]
+
+        # Directly use state_code and county_code as strings
+        state_code_str = str(state_code)
+        county_code_str = str(county_code)
+
+        if lookup_method == 'md' and md_code != 'nan':
+            code_to_area[md_code] = area_name
+        elif lookup_method == 'msa' and msa_code != 'nan':
+            code_to_area[msa_code] = area_name
+        elif lookup_method == 'state_county':
+            state_county_key = (state_code_str, county_code_str)
+            code_to_area[state_county_key] = area_name
+
+    return code_to_area
+
+def map_area_names(df, code_to_area):
+    # Function to get area name based on codes
+    def get_area_name(md_code, msa_code, state_code, county_code):
+        # Check MD_Code
+        if md_code in code_to_area:
+            return code_to_area[md_code]
+
+        # Check MSA_Code
+        if msa_code in code_to_area:
+            return code_to_area[msa_code]
+
+        # Check State_Code and County_Code
+        if state_code and county_code:
+            state_county_key = (state_code, county_code)
+            if state_county_key in code_to_area:
+                return code_to_area[state_county_key]
+
+        return None
+
+    # Apply mapping to create "Area" column
+    df = df.with_columns(
+        pl.struct(['MD_Code', 'MSA_Code', 'State_Code', 'County_Code']).map_elements(
+            lambda row: get_area_name(
+                row['MD_Code'], 
+                row['MSA_Code'], 
+                row['State_Code'], 
+                row['County_Code']
+            ),
+            return_dtype=pl.Utf8
+        ).alias('Area')
+    )
+    
+    return df
+
 def top_areas(engine, df, selected_bank, selected_year):
+    assessment_areas = fetch_assessment_area(engine, selected_bank, selected_year)
+    code_to_area = create_mapping_dict(assessment_areas)
+
+    # Assuming `df` is your DataFrame
+    df = map_area_names(df, code_to_area)
+
     print(df)
 
     columns_to_drop = ['cra_current_year_assets', 'cra_previous_year_assets', 'hmda_assets', 'number_of_branches', 
@@ -1522,18 +1585,12 @@ def top_areas(engine, df, selected_bank, selected_year):
                        'Loan_Orig_SFam_Open_Inside', 'Loan_Orig_MFam_Inside', 'SB_Loan_Orig_Inside', 
                        'SF_Loan_Orig_Inside', 'Amt_Orig_SFam_Closed_Inside', 'Amt_Orig_SFam_Open_Inside', 
                        'Amt_Orig_MFam_Inside', 'SB_Amt_Orig_Inside', 'SF_Amt_Orig_Inside', 'Loan_Orig_SFam_Closed', 
-                       'Loan_Orig_SFam_Open', 'Loan_Orig_MFam', 'MSA_Code']
+                       'Loan_Orig_SFam_Open', 'Loan_Orig_MFam']
     df = df.drop(columns_to_drop)
 
-    assessment_areas = fetch_assessment_area(engine, selected_bank, selected_year)
-
-    area_series = pd.Series(assessment_areas)
-
-    # Add the "Area" column to the DataFrame
-    df = df.with_columns('Area', area_series)
-
+    
     # Group by "Area" and sum the specified columns
-    df = df.groupby('Area').agg([
+    df = df.group_by('Area').agg([
         pl.col('Amt_Orig').sum(),
         pl.col('SB_Amt_Orig').sum(),
         pl.col('SF_Amt_Orig').sum(),
@@ -1543,3 +1600,5 @@ def top_areas(engine, df, selected_bank, selected_year):
     ])
 
     print(df)
+    gt_instance =GT(df)
+    return gt_instance
