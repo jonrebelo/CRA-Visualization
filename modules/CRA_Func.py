@@ -1585,20 +1585,207 @@ def top_areas(engine, df, selected_bank, selected_year):
                        'Loan_Orig_SFam_Open_Inside', 'Loan_Orig_MFam_Inside', 'SB_Loan_Orig_Inside', 
                        'SF_Loan_Orig_Inside', 'Amt_Orig_SFam_Closed_Inside', 'Amt_Orig_SFam_Open_Inside', 
                        'Amt_Orig_MFam_Inside', 'SB_Amt_Orig_Inside', 'SF_Amt_Orig_Inside', 'Loan_Orig_SFam_Closed', 
-                       'Loan_Orig_SFam_Open', 'Loan_Orig_MFam']
+                       'Loan_Orig_SFam_Open', 'Loan_Orig_MFam', 'SB_Amt_Orig', 'SF_Loan_Orig', 'SB_Amt_Orig', 'SB_Loan_Orig']
     df = df.drop(columns_to_drop)
 
     
     # Group by "Area" and sum the specified columns
     df = df.group_by('Area').agg([
         pl.col('Amt_Orig').sum(),
-        pl.col('SB_Amt_Orig').sum(),
-        pl.col('SF_Amt_Orig').sum(),
         pl.col('Loan_Orig').sum(),
-        pl.col('SB_Loan_Orig').sum(),
-        pl.col('SF_Loan_Orig').sum()
+
     ])
 
+    # Re-order the columns
+    df = df.select([
+        'Area', 'Amt_Orig', 'Loan_Orig'
+    ])
+
+    # Sort the rows by Amt_Orig in descending order
+    df = df.sort('Amt_Orig', descending=True)
+
+    df = df.head(10)
+
     print(df)
-    gt_instance =GT(df)
+    gt_instance = (
+    GT(df)
+    .opt_table_outline()
+    .opt_stylize(style=2, color="blue")
+    .tab_style(
+        style=style.text( weight = "bold"),
+        locations=loc.body(rows=[0,1,2]),
+    )
+    .tab_style(
+        style=style.fill(color="lightcyan"),
+        locations=loc.body(rows=[0,1,2]),
+    )
+    .tab_header(title = "Top Residential Lending Areas", subtitle=f"{selected_bank}")
+    .cols_label(Amt_Orig = "$000s",
+                Loan_Orig = "Count"
+    )
+    .tab_options(
+        table_body_hlines_style="solid",
+        table_body_vlines_style="solid",
+        table_body_border_top_color="gray",
+        table_body_border_bottom_color="gray",
+        container_width="100%",
+        stub_font_weight="bold",       # Make stub text bold
+        stub_font_size="14px",         # Adjust stub font size if needed
+        stub_background_color="lightgray",  # Set stub background color if desired
+        stub_border_style="solid",     # Set stub border style
+        stub_border_color="gray",      # Set stub border color
+        row_group_font_weight="bold",      # Make row group labels bold
+        row_group_font_size="16px",        # Adjust row group font size if needed
+        row_group_background_color="lightblue",  # Set row group background color if desired
+        row_group_padding="8px",           # Add padding around row group labels
+    )
+    .fmt_number(columns=[ 'Amt_Orig', 'Loan_Orig'], decimals=0, use_seps=True)
+    .cols_align(align="center", columns=[ 'Area','Amt_Orig', 'Loan_Orig'])           
+    )
+    
+    return gt_instance
+
+
+def top_business_areas(engine, df, selected_bank, selected_year):
+    assessment_areas = fetch_assessment_area(engine, selected_bank, selected_year)
+    code_to_area = create_mapping_dict(assessment_areas)
+
+    # Assuming `df` is your DataFrame
+    df = map_area_names(df, code_to_area)
+
+    print(df)
+
+    columns_to_drop = ['cra_current_year_assets', 'cra_previous_year_assets', 'hmda_assets', 'number_of_branches', 
+                       'bank_county_deposits', 'Lender_in_CRA', 'Lender_in_HMDA', 'id_rssd', 'Amt_Orig_SFam_Closed', 
+                       'Amt_Orig_SFam_Open', 'Amt_Orig_MFam', 'Partial_Ind', 'Loan_Orig_SFam_Closed_Inside', 
+                       'Loan_Orig_SFam_Open_Inside', 'Loan_Orig_MFam_Inside', 'SB_Loan_Orig_Inside', 
+                       'SF_Loan_Orig_Inside', 'Amt_Orig_SFam_Closed_Inside', 'Amt_Orig_SFam_Open_Inside', 
+                       'Amt_Orig_MFam_Inside', 'SB_Amt_Orig_Inside', 'SF_Amt_Orig_Inside', 'Loan_Orig_SFam_Closed', 
+                       'Loan_Orig_SFam_Open', 'Loan_Orig_MFam','Amt_Orig', 'Loan_Orig', 'SF_Loan_Orig','SF_Amt_Orig']
+    df = df.drop(columns_to_drop)
+
+    
+    # Group by "Area" and sum the specified columns
+    df = df.group_by('Area').agg([
+        pl.col('SB_Amt_Orig').sum(),
+        pl.col('SB_Loan_Orig').sum(),
+    ])
+
+    # Re-order the columns
+    df = df.select([
+        'Area', 'SB_Amt_Orig', 'SB_Loan_Orig'
+    ])
+
+    df = df.head(10)
+    df = df.sort('SB_Amt_Orig', descending=True)
+
+    print(df)
+    gt_instance = (
+    GT(df)
+    .opt_table_outline()
+    .opt_stylize(style=2, color="blue")
+    .tab_style(
+        style=style.text( weight = "bold"),
+        locations=loc.body(rows=[0,1,2]),
+    )
+    .tab_style(
+        style=style.fill(color="lightcyan"),
+        locations=loc.body(rows=[0,1,2]),
+    )
+    .tab_header(title = "Top Business Lending Areas", subtitle=f"{selected_bank}")
+    .cols_label(SB_Amt_Orig = "$000s",
+                SB_Loan_Orig = "Count"
+    )
+    .tab_options(
+        table_body_hlines_style="solid",
+        table_body_vlines_style="solid",
+        table_body_border_top_color="gray",
+        table_body_border_bottom_color="gray",
+        container_width="100%",
+        stub_font_weight="bold",       # Make stub text bold
+        stub_font_size="14px",         # Adjust stub font size if needed
+        stub_background_color="lightgray",  # Set stub background color if desired
+        stub_border_style="solid",     # Set stub border style
+        stub_border_color="gray",      # Set stub border color
+        row_group_font_weight="bold",      # Make row group labels bold
+        row_group_font_size="16px",        # Adjust row group font size if needed
+        row_group_background_color="lightblue",  # Set row group background color if desired
+        row_group_padding="8px",           # Add padding around row group labels
+    )
+    .fmt_number(columns=[ 'SB_Amt_Orig', 'SB_Loan_Orig'], decimals=0, use_seps=True)
+    .cols_align(align="center", columns=[ 'Area','SB_Amt_Orig', 'SB_Loan_Orig'])           
+    )
+    
+    return gt_instance
+
+def top_farm_areas(engine, df, selected_bank, selected_year):
+    assessment_areas = fetch_assessment_area(engine, selected_bank, selected_year)
+    code_to_area = create_mapping_dict(assessment_areas)
+
+    # Assuming `df` is your DataFrame
+    df = map_area_names(df, code_to_area)
+
+    print(df)
+
+    columns_to_drop = ['cra_current_year_assets', 'cra_previous_year_assets', 'hmda_assets', 'number_of_branches', 
+                       'bank_county_deposits', 'Lender_in_CRA', 'Lender_in_HMDA', 'id_rssd', 'Amt_Orig_SFam_Closed', 
+                       'Amt_Orig_SFam_Open', 'Amt_Orig_MFam', 'Partial_Ind', 'Loan_Orig_SFam_Closed_Inside', 
+                       'Loan_Orig_SFam_Open_Inside', 'Loan_Orig_MFam_Inside', 'SB_Loan_Orig_Inside', 
+                       'SF_Loan_Orig_Inside', 'Amt_Orig_SFam_Closed_Inside', 'Amt_Orig_SFam_Open_Inside', 
+                       'Amt_Orig_MFam_Inside', 'SB_Amt_Orig_Inside', 'SF_Amt_Orig_Inside', 'Loan_Orig_SFam_Closed', 
+                       'Loan_Orig_SFam_Open', 'Loan_Orig_MFam','Amt_Orig', 'Loan_Orig', 'SB_Loan_Orig','SB_Amt_Orig']
+    df = df.drop(columns_to_drop)
+
+    
+    # Group by "Area" and sum the specified columns
+    df = df.group_by('Area').agg([
+        pl.col('SF_Amt_Orig').sum(),
+        pl.col('SF_Loan_Orig').sum(),
+    ])
+
+    # Re-order the columns
+    df = df.select([
+        'Area', 'SF_Amt_Orig', 'SF_Loan_Orig'
+    ])
+
+    df = df.head(10)
+    df = df.sort('SF_Amt_Orig', descending=True)
+
+    print(df)
+    gt_instance = (
+    GT(df)
+    .opt_table_outline()
+    .opt_stylize(style=2, color="blue")
+    .tab_style(
+        style=style.text( weight = "bold"),
+        locations=loc.body(rows=[0,1,2]),
+    )
+    .tab_style(
+        style=style.fill(color="lightcyan"),
+        locations=loc.body(rows=[0,1,2]),
+    )
+    .tab_header(title = "Top Farm Lending Areas", subtitle=f"{selected_bank}")
+    .cols_label(SF_Amt_Orig = "$000s",
+                SF_Loan_Orig = "Count"
+    )
+    .tab_options(
+        table_body_hlines_style="solid",
+        table_body_vlines_style="solid",
+        table_body_border_top_color="gray",
+        table_body_border_bottom_color="gray",
+        container_width="100%",
+        stub_font_weight="bold",       # Make stub text bold
+        stub_font_size="14px",         # Adjust stub font size if needed
+        stub_background_color="lightgray",  # Set stub background color if desired
+        stub_border_style="solid",     # Set stub border style
+        stub_border_color="gray",      # Set stub border color
+        row_group_font_weight="bold",      # Make row group labels bold
+        row_group_font_size="16px",        # Adjust row group font size if needed
+        row_group_background_color="lightblue",  # Set row group background color if desired
+        row_group_padding="8px",           # Add padding around row group labels
+    )
+    .fmt_number(columns=[ 'SF_Amt_Orig', 'SF_Loan_Orig'], decimals=0, use_seps=True)
+    .cols_align(align="center", columns=[ 'Area','SF_Amt_Orig', 'SF_Loan_Orig'])           
+    )
+    
     return gt_instance

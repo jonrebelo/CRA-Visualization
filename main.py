@@ -8,10 +8,27 @@ engine = SQL.create_db_connection()
 years = ['Select...', '2018', '2019', '2020', '2021']
 selected_year = st.selectbox('Select an exam year', options=years)
 
+def group_and_sort_assessment_areas(assessment_areas):
+    grouped_areas = {}
+    for area in assessment_areas:
+        state = area.split(',')[-1].strip()
+        if state not in grouped_areas:
+            grouped_areas[state] = []
+        grouped_areas[state].append(area)
+    
+    for state in grouped_areas:
+        grouped_areas[state].sort()
+    
+    sorted_areas = []
+    for state in sorted(grouped_areas):
+        sorted_areas.extend(grouped_areas[state])
+    
+    return sorted_areas
+
 if selected_year != 'Select...':
     # Create a dropdown menu for bank names
     bank_names = ['Select...'] + sorted(SQL.fetch_bank_names_for_year(engine, selected_year))
-    selected_bank = st.selectbox('Select a bank', options=bank_names)
+    selected_bank = st.selectbox('Select an Institution', options=bank_names)
 
     if selected_bank != 'Select...':
         # Add radio buttons for "Overall" and "Custom Reports by Region"
@@ -26,6 +43,10 @@ if selected_year != 'Select...':
             st.html(inside_out.as_raw_html())
             top_areas = CRA.top_areas(engine, df, selected_bank, selected_year)
             st.html(top_areas.as_raw_html())
+            top_bus = CRA.top_business_areas(engine, df, selected_bank, selected_year)
+            st.html(top_bus.as_raw_html())
+            top_farm = CRA.top_farm_areas(engine, df, selected_bank, selected_year)
+            st.html(top_farm.as_raw_html())
         else:
             selected_options = []  # Initialize selected_options to an empty list
             assessment_areas = SQL.fetch_assessment_area(engine, selected_bank, selected_year)
@@ -34,13 +55,13 @@ if selected_year != 'Select...':
                 assessment_areas = {'No assessment areas found': {'codes': ('nan', 'nan', 'nan', 'nan', 'nan'), 'lookup_method': 'nan'}}
                 st.write("No assessment areas found for the selected bank and year.")
             else:
-                assessment_areas = {'Select...': {'codes': ('nan', 'nan', 'nan', 'nan', 'nan'), 'lookup_method': 'nan'}, **assessment_areas}
+                sorted_areas = group_and_sort_assessment_areas(assessment_areas.keys())
 
-                # Create a dropdown menu for assessment areas
-                selected_area = st.selectbox('Select an assessment area', options=assessment_areas.keys())
-                md_code, msa_code, state_code, county_code, lookup_method = assessment_areas[selected_area]['codes']
+                # Create a dropdown menu for assessment areas, default to the first item
+                if sorted_areas:
+                    selected_area = st.selectbox('Select an assessment area', options=sorted_areas, index=0)
+                    md_code, msa_code, state_code, county_code, lookup_method = assessment_areas[selected_area]['codes']
 
-                if selected_area != 'Select...':
                     options = ['Loan Distribution Graph', 'Loan Distribution Table', 'Assessment Area Distribution Table', 'Borrower Income Table', 'Tract Income Table', 'Business Tract Data', 'Business Size Data', 'Residential Demographics', 'Business Demographics']
                     selected_options = st.multiselect('Select the graphs and tables you want to display:', options)
                     st.markdown(f'<h1 style="font-size:30px;"> CRA Data for {selected_bank} - {selected_year} - {selected_area}</h1>', unsafe_allow_html=True)
