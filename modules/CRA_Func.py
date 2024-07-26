@@ -1570,9 +1570,8 @@ def map_area_names(df, code_to_area):
     
     return df
 
-def top_areas(engine, df, selected_bank, selected_year):
-    assessment_areas = fetch_assessment_area(engine, selected_bank, selected_year)
-    code_to_area = create_mapping_dict(assessment_areas)
+def top_areas(engine, df, selected_bank, selected_year, overall_areas):
+    code_to_area = create_mapping_dict(overall_areas)
 
     # Assuming `df` is your DataFrame
     df = map_area_names(df, code_to_area)
@@ -1646,9 +1645,9 @@ def top_areas(engine, df, selected_bank, selected_year):
     return gt_instance
 
 
-def top_business_areas(engine, df, selected_bank, selected_year):
-    assessment_areas = fetch_assessment_area(engine, selected_bank, selected_year)
-    code_to_area = create_mapping_dict(assessment_areas)
+def top_business_areas(engine, df, selected_bank, selected_year, overall_areas):
+    code_to_area = create_mapping_dict(overall_areas)
+
 
     # Assuming `df` is your DataFrame
     df = map_area_names(df, code_to_area)
@@ -1718,9 +1717,8 @@ def top_business_areas(engine, df, selected_bank, selected_year):
     
     return gt_instance
 
-def top_farm_areas(engine, df, selected_bank, selected_year):
-    assessment_areas = fetch_assessment_area(engine, selected_bank, selected_year)
-    code_to_area = create_mapping_dict(assessment_areas)
+def top_farm_areas(engine, df, selected_bank, selected_year, overall_areas):
+    code_to_area = create_mapping_dict(overall_areas)
 
     # Assuming `df` is your DataFrame
     df = map_area_names(df, code_to_area)

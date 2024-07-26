@@ -41,11 +41,12 @@ if selected_year != 'Select...':
             st.html(loan_dist.as_raw_html())
             inside_out = CRA.overall_inside_out_great_table(df, selected_bank)
             st.html(inside_out.as_raw_html())
-            top_areas = CRA.top_areas(engine, df, selected_bank, selected_year)
+            overall_areas = assessment_areas = SQL.fetch_assessment_area(engine, selected_bank, selected_year)
+            top_areas = CRA.top_areas(engine, df, selected_bank, selected_year, overall_areas)
             st.html(top_areas.as_raw_html())
-            top_bus = CRA.top_business_areas(engine, df, selected_bank, selected_year)
+            top_bus = CRA.top_business_areas(engine, df, selected_bank, selected_year, overall_areas)
             st.html(top_bus.as_raw_html())
-            top_farm = CRA.top_farm_areas(engine, df, selected_bank, selected_year)
+            top_farm = CRA.top_farm_areas(engine, df, selected_bank, selected_year, overall_areas)
             st.html(top_farm.as_raw_html())
         else:
             selected_options = []  # Initialize selected_options to an empty list
