@@ -183,51 +183,40 @@ if selected_year != 'Select...':
                 """
             
             st.markdown(summary, unsafe_allow_html=True)
-            
-            # Add headers above the columns
-            st.markdown('<div class="header"><h2>Summarized Lending Splits</h2></div>', unsafe_allow_html=True)
-            
-            # Display charts with adjusted column widths
-            loan_dist = CRA.overall_distribution_great_tables(df, selected_bank)
-            inside_out = CRA.overall_inside_out_great_table(df, selected_bank)
-            
-            col1, col2 = st.columns([1, 2])  # col1 is 33.3% and col2 is 66.7% of the width
-            with col1:
-                st.html(loan_dist.as_raw_html())
-            with col2:
-                st.html(inside_out.as_raw_html())
-            
-            st.markdown('<div class="header"><h2>Lending Statistics by Loan Type</h2></div>', unsafe_allow_html=True)
+
             
             overall_areas = assessment_areas = SQL.fetch_assessment_area(engine, selected_bank, selected_year)
+        # Generate HTML for tables
+            loan_dist = CRA.overall_distribution_great_tables(df, selected_bank)
+            inside_out = CRA.overall_inside_out_great_table(df, selected_bank)
             top_areas = CRA.top_areas(engine, df, selected_bank, selected_year, overall_areas)
             top_bus = CRA.top_business_areas(engine, df, selected_bank, selected_year, overall_areas)
             top_farm = CRA.top_farm_areas(engine, df, selected_bank, selected_year, overall_areas)
-            
+
+            # Convert to HTML
+            loan_dist_html = loan_dist.as_raw_html()
+            inside_out_html = inside_out.as_raw_html()
+            top_areas_html = top_areas.as_raw_html()
+            top_bus_html = top_bus.as_raw_html()
+            top_farm_html = top_farm.as_raw_html()
+
+            # Display in Streamlit
+            col1, col2 = st.columns([1, 2])
+            with col1:
+                st.html(loan_dist_html)
+            with col2:
+                st.html(inside_out_html)
+
             col3, col4, col5 = st.columns(3)
             with col3:
-                st.html(top_areas.as_raw_html())
+                st.html(top_areas_html)
             with col4:
-                st.html(top_bus.as_raw_html())
+                st.html(top_bus_html)
             with col5:
-                st.html(top_farm.as_raw_html())
+                st.html(top_farm_html)
 
-            # Disclaimer
-            st.markdown("""
-            <div class="disclaimer">
-                <p><strong>Disclaimer:</strong></p>
-                <p>The banking and financial data used in this report is sourced from the <a href="https://www.federalreserve.gov/consumerscommunities/data_tables.htm" target="_blank">Federal Reserve</a>.</p>
-                <p>Geographical data is sourced from the <a href="https://www.ffiec.gov/" target="_blank">FFIEC</a>.</p>
-                <p>There may be slight deviations in the data due to different fiscal year timings and the fact that our data is separated by activity within the calendar year.</p>
-                <p>While every effort is made to ensure accuracy, please verify any critical information with official sources or consult a financial expert.</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-            # Generate HTML for download
-            html_content = fmt.generate_html_summary(summary)
-            
-            # Display the download link
-            st.markdown(fmt.download_link(html_content, "CRA_Report.html"), unsafe_allow_html=True)
+            # Add export buttons
+            fmt.export_report(summary, loan_dist_html, inside_out_html, top_areas_html, top_bus_html, top_farm_html, selected_bank, selected_year)
 
         else:
             selected_options = []  # Initialize selected_options to an empty list
