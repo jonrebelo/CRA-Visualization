@@ -1276,36 +1276,45 @@ def overall_distribution_great_tables(df, selected_bank):
 
     # Create Great Tables instance with Polars DataFrame
     gt_instance = (
-    GT(df)
-    .opt_table_outline()
-    .opt_stylize(style = 2, color = "blue")
-    .tab_header(title = "Loan Distribution", subtitle = f"{selected_bank}")
-    .cols_label(column = 'Loan Type', column_0 = "Amount $(000's)" )
-    .fmt_percent(columns = 'Loan Percentages', decimals = 1)
-    .fmt_number(columns= "column_0", use_seps = True, decimals = 0)
-    .tab_style(
-        style=style.text(style = "italic",),
-        locations=loc.body(rows=[5, 6]),
-    )
-    .tab_style(
-        style=style.fill(color="lightyellow"),
-        locations=loc.body(rows=[5, 6]),
-    )
-    .tab_style(
-        style=style.text( weight = "bold"),
-        locations=loc.body(rows=[7]),
-    )
-    .tab_style(
-        style=style.fill(color="lightcyan"),
-        locations=loc.body(rows=[7]),
-    )
-    .tab_options(
-    table_body_hlines_style="solid",
-    table_body_vlines_style="solid",
-    table_body_border_top_color="gray",
-    table_body_border_bottom_color="gray",
-    container_width = "100%"   
-    )
+        GT(df)
+        .opt_table_outline()
+        .opt_stylize(style=2, color="blue")
+        .tab_header(title="Loan Distribution", subtitle=f"{selected_bank}")
+        .cols_label(column='Loan Type', column_0="Amount $(000's)")
+        .fmt_percent(columns='Loan Percentages', decimals=1)
+        .fmt_number(columns="column_0", use_seps=True, decimals=0)
+        .tab_style(
+            style=style.text(style="italic"),
+            locations=loc.body(rows=[5, 6]),
+        )
+        .tab_style(
+            style=style.fill(color="lightyellow"),
+            locations=loc.body(rows=[5, 6]),
+        )
+        .tab_style(
+            style=style.text(weight="bold"),
+            locations=loc.body(rows=[7]),
+        )
+        .tab_style(
+            style=style.fill(color="lightcyan"),
+            locations=loc.body(rows=[7]),
+        )
+        .tab_options(
+            table_body_hlines_style="solid",
+            table_body_vlines_style="solid",
+            table_body_border_top_color="gray",
+            table_body_border_bottom_color="gray",
+            container_width="100%",
+            container_height="100%",
+            data_row_padding="15px",  # Increase row padding
+            table_font_size="16px",  # Increase font size
+            column_labels_border_top_style="solid",
+            column_labels_border_top_width="2px",
+            column_labels_border_top_color="blue",
+            column_labels_border_bottom_style="solid",
+            column_labels_border_bottom_width="2px",
+            column_labels_border_bottom_color="blue",
+        )
     )
 
     # Return Great Tables instance
