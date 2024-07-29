@@ -1,10 +1,9 @@
 
-import plotly.graph_objects as go
 import polars as pl
 from great_tables import GT, style, loc
 import pandas as pd
 
-def create_loan_distribution_chart(df, area_name, engine):
+"""def create_loan_distribution_chart(df, area_name, engine):
 
 
     df=df.sum()
@@ -80,7 +79,7 @@ def create_loan_distribution_chart(df, area_name, engine):
         )
         figures.append(fig)
 
-    return figures
+    return figures"""
 
 
 
