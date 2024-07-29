@@ -23,7 +23,7 @@ The application is built with Streamlit and provides an interactive interface fo
 
 ![Screenshot 1](/screenshots/Screenshot.png)
 
-Additionally, for more fine grain details Custom Reports can be generated divided up by location the institution had lending activity for that year. 
+Additionally, for more fine grain detailsm Custom Reports can be generated divided up by the locations the selected institution had lending activity for that year. 
 
 ![Screenshot 3](/screenshots/Screenshot3.png)
 
@@ -48,23 +48,23 @@ Planned features for future development include:
 - Plotly intergration for graphs
 - Custom reports with data from multiple lending locations
 - Support for years before 2018 (changes in data collection methodology after 2018 would require multiple revisions to table code and calculations).
-- and after 2020 (limited by availability of data at this time).
+- and data after 2020 (limited by availability of data at this time).
 
 ##### Usage
 
-Download the data from https://www.federalreserve.gov/consumerscommunities/data_tables.htm. 
+1. Download the data from https://www.federalreserve.gov/consumerscommunities/data_tables.htm. 
 
-retail_loan_lending_test.csv and performance_evaluation_table.csv were used for this application.
+2. retail_loan_lending_test.csv and performance_evaluation_table.csv were used for this application.
 
-Download MSA Tract data from https://www.ffiec.gov/. Click on MSA/MD state county tract crosswalk  to get the xlsx.
+3. Download MSA Tract data from https://www.ffiec.gov/. Click on MSA/MD state county tract crosswalk  to get the xlsx.
 
-Put both these files in the data folder.
+4. Put both these files in the data folder.
 
-Run the csv_to_db to combine all of these into a db file to be used by the application. Take care to change chunk size based on computer resources. Current chunk size worked well with 8 cores, 16 threads, and 32GB of RAM. 
+5. Run the csv_to_db.py to combine all of these into a db file to be used by the application. Take care to change chunk size based on computer resources. Current chunk size worked well with 8 cores, 16 threads, and 32GB of RAM. 
 
-Open main.py. Run the streamlit app in terminal using streamlit run then adding the filepath to main.py.
+6. Open main.py. Run the streamlit app in terminal using streamlit run then adding the filepath to main.py.
 
-Select the Year, Institution, and what kind of reports you want to see. At the bottom of the page, they can be exported to HTML for offline access.
+7. In the opened web app, select the Year, Institution, and what kind of reports you want to see. At the bottom of the page, they can be exported to HTML for offline access.
 
 ###### Contribution
 Contributions are welcome! Please feel free to submit a pull request or open an issue if you have any suggestions or find any bugs.
