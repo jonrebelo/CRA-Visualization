@@ -2,7 +2,6 @@ import streamlit as st
 from modules import CRA_Func as CRA
 from modules import SQL_Queries as SQL
 from modules import Format as fmt
-import streamlit.components.v1 as components
 
 
 st.set_page_config(page_title='CRA Analysis', layout='wide', page_icon=':📊:')
@@ -10,6 +9,12 @@ st.set_page_config(page_title='CRA Analysis', layout='wide', page_icon=':📊:')
 engine = SQL.create_db_connection()
 years = ['Select...', '2018', '2019', '2020', '2021']
 selected_year = st.selectbox('Select an exam year', options=years)
+
+if 'selected_year' not in st.session_state:
+    st.session_state.selected_year = selected_year
+else:
+    # Update session state with the current value of selected_year
+    st.session_state.selected_year = selected_year
 
 
 
@@ -248,7 +253,31 @@ if selected_year != 'Select...':
 
                     options = ['Loan Distribution Table', 'Assessment Area Distribution Table', 'Borrower Income Table', 'Tract Income Table', 'Business Tract Data', 'Business Size Data', 'Residential Demographics', 'Business Demographics']
                     selected_options = st.multiselect('Select the graphs and tables you want to display:', options)
-                    st.markdown(f'<h1 style="font-size:30px;"> CRA Data for {selected_bank} - {selected_year} - {selected_area}</h1>', unsafe_allow_html=True)
+                    st.markdown(f'''
+                    <style>
+                        .summary-header {{
+                            font-size: 2em;
+                            font-weight: bold;
+                            text-align: center;
+                            margin-bottom: 20px;
+                        }}
+                        .summary-subheader {{
+                            font-size: 1.5em;
+                            font-weight: bold;
+                            text-align: center;
+                            margin-bottom: 10px;
+                        }}
+                        .summary-key {{
+                            font-weight: bold;
+                        }}
+                    </style>
+                    <div class="summary-header">Custom CRA Data</div>
+                    <div class="summary-subheader">
+                        <p><span class="summary-subheader">Institution: {selected_bank}</span></p>
+                        <p><span class="summary-subheader">Year: {selected_year}</span></p>
+                        <p><span class="summary-subheader">Location: {selected_area}</span></p>
+                    </div>
+                    ''', unsafe_allow_html=True)
 
                 # Function to create Great Tables table
                 def create_great_tables_table():
@@ -256,48 +285,58 @@ if selected_year != 'Select...':
                     dataset = CRA.create_loan_distribution_great_tables(df, selected_area, selected_bank)
                     if dataset is not None:  # Ensure dataset is not None
                         return dataset.as_raw_html()
+                    return ""
 
                 def create_inside_out_table():
                     df = SQL.fetch_loan_data_inside_out(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code)
                     dataset = CRA.create_inside_out_great_table(df, selected_bank, selected_area)
                     if dataset is not None:  # Ensure dataset is not None
                         return dataset.as_raw_html()
+                    return ""
 
                 def create_bor_income_table():
                     df = SQL.fetch_loan_data_bor_income(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code)
                     dataset = CRA.bor_income_table(df, selected_bank, selected_area)
                     if dataset is not None:  # Ensure dataset is not None
                         return dataset.as_raw_html()
+                    return ""
 
                 def create_tract_income_table():
                     df = SQL.fetch_loan_data_tract_income(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code)
                     dataset = CRA.tract_income_table(df, selected_bank, selected_area)
                     if dataset is not None:  # Ensure dataset is not None
                         return dataset.as_raw_html()
+                    return ""
 
                 def create_tract_business_table():
                     df = SQL.fetch_loan_data_business(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code)
                     dataset = CRA.business_tract_table(df, selected_bank, selected_area)
                     if dataset is not None:  # Ensure dataset is not None
                         return dataset.as_raw_html()
+                    return ""
 
                 def create_business_size_table():
                     df = SQL.fetch_loan_business_size(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code)
                     dataset = CRA.business_size_table(df, selected_bank, selected_area)
                     if dataset is not None:  # Ensure dataset is not None
                         return dataset.as_raw_html()
+                    return ""
 
                 def create_demographics_table():
                     df = SQL.fetch_demographics(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code)
                     dataset = CRA.demographics_table(df, selected_bank, selected_area)
                     if dataset is not None:  # Ensure dataset is not None
                         return dataset.as_raw_html()
+                    return ""
 
                 def create_business_demographics_table():
                     df = SQL.fetch_bus_demographics(engine, selected_bank, selected_year, md_code, msa_code, selected_area, lookup_method, state_code, county_code)
                     dataset = CRA.business_demographics_table(df, selected_bank, selected_area)
                     if dataset is not None:  # Ensure dataset is not None
                         return dataset.as_raw_html()
+                    return ""
+                
+                html_content_dict = {}
 
                 # Display the selected graphs and tables
                 columns = [None, None]
@@ -311,8 +350,6 @@ if selected_year != 'Select...':
 
                 # Display the selected graphs and tables
                 for option in selected_options:
-         
-
                     # Set up columns if they haven't been set up
                     setup_columns()
                     
@@ -336,32 +373,35 @@ if selected_year != 'Select...':
                     if result is not None:
                         with columns[column_index]:
                             st.html(result)
+                        html_content_dict[option] = result  # Store the HTML content
                     
                     # Update column index
                     column_index = (column_index + 1) % 2
 
-            disclaimer2_html = '''
-            <style>
-                .disclaimer {
-                    font-size: 0.9em;
-                    margin-top: 40px;
-                    border-top: 1px solid #ddd;
-                    padding-top: 10px;
-                    text-align: center;
-                    color: #555;
-                }
+                disclaimer2_html = '''
+                <style>
+                    .disclaimer {
+                        font-size: 0.9em;
+                        margin-top: 40px;
+                        border-top: 1px solid #ddd;
+                        padding-top: 10px;
+                        text-align: center;
+                        color: #555;
+                    }
 
-            </style>
+                </style>
 
-            <div class="separator"></div>
-            <div class="disclaimer">
-                <p><strong>Disclaimer:</strong></p>
-                <p>The banking and financial data used in this report is sourced from the <a href="https://www.federalreserve.gov/consumerscommunities/data_tables.htm" target="_blank">Federal Reserve</a>.</p>
-                <p>Geographical data is sourced from the <a href="https://www.ffiec.gov/" target="_blank">FFIEC</a>.</p>
-                <p>There may be slight deviations in the data due to different fiscal year timings and the fact that our data is separated by activity within the calendar year.</p>
-                <p>While every effort is made to ensure accuracy, please verify any critical information with official sources or consult a financial expert.</p>
-            </div>
-            '''
+                <div class="separator"></div>
+                <div class="disclaimer">
+                    <p><strong>Disclaimer:</strong></p>
+                    <p>The banking and financial data used in this report is sourced from the <a href="https://www.federalreserve.gov/consumerscommunities/data_tables.htm" target="_blank">Federal Reserve</a>.</p>
+                    <p>Geographical data is sourced from the <a href="https://www.ffiec.gov/" target="_blank">FFIEC</a>.</p>
+                    <p>There may be slight deviations in the data due to different fiscal year timings and the fact that our data is separated by activity within the calendar year.</p>
+                    <p>While every effort is made to ensure accuracy, please verify any critical information with official sources or consult a financial expert.</p>
+                </div>
+                '''
 
-            # Add the disclaimer and separator before displaying the charts and tables
-            st.markdown(disclaimer2_html, unsafe_allow_html=True)
+                # Add the disclaimer and separator before displaying the charts and tables
+                st.markdown(disclaimer2_html, unsafe_allow_html=True)
+
+                fmt.generate_html_export(html_content_dict, selected_bank, selected_year, selected_area)
