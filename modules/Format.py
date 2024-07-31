@@ -105,7 +105,7 @@ def generate_html_export(html_content_dict, selected_bank, selected_year, select
                 <p><strong>Disclaimer:</strong></p>
                 <p>The banking and financial data used in this report is sourced from the <a href="https://www.federalreserve.gov/consumerscommunities/data_tables.htm" target="_blank">Federal Reserve</a>.</p>
                 <p>Geographical data is sourced from the <a href="https://www.ffiec.gov/" target="_blank">FFIEC</a>.</p>
-                <p>There may be slight deviations in the data due to different fiscal year timings and the fact that our data is separated by activity within the calendar year.</p>
+                <p>There may be slight deviations in the data due to different fiscal year timings for individual banks and the Federal Reserve data is categorized by activity within the calendar year.</p>
                 <p>While every effort is made to ensure accuracy, please verify any critical information with official sources or consult a financial expert.</p>
             </div>
         </div>
@@ -224,7 +224,7 @@ def export_report(summary, loan_dist_html, inside_out_html, top_areas_html, top_
                 <p><strong>Disclaimer:</strong></p>
                 <p>The banking and financial data used in this report is sourced from the <a href="https://www.federalreserve.gov/consumerscommunities/data_tables.htm" target="_blank">Federal Reserve</a>.</p>
                 <p>Geographical data is sourced from the <a href="https://www.ffiec.gov/" target="_blank">FFIEC</a>.</p>
-                <p>There may be slight deviations in the data due to different fiscal year timings and the fact that our data is separated by activity within the calendar year.</p>
+                <p>There may be slight deviations in the data due to different fiscal year timings for individual banks and the Federal Reserve data is categorized by activity within the calendar year.</p>
                 <p>While every effort is made to ensure accuracy, please verify any critical information with official sources or consult a financial expert.</p>
             </div>
         </div>

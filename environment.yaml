@@ -1,0 +1,9 @@
+name: myenv
+channels:
+  - conda-forge
+dependencies:
+  - streamlit
+  - polars
+  - great_tables
+  - sqlalchemy
+  - pandas

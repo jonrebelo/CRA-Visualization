@@ -2,23 +2,7 @@
 
 Using a combination of SQL, Polars, Pandas, and Streamlit for presentation, this application is designed to parse and analyze information regarding Community Reinvestment Act (CRA) data provided by the Federal Reserve. The data can be found at [Federal Reserve CRA Data](https://www.federalreserve.gov/consumerscommunities/data_tables.htm).
 
-## Required Packages
-
-The application requires the following Python packages:
-
-- streamlit
-- great_tables
-- polars
-- sqlalchemy
-- pandas
-
-You can install these packages using pip:
-
-```bash
-pip install streamlit polars great_tables sqlalchemy pandas
-```
-
-### Functionality
+## Functionality
 The application is built with Streamlit and provides an interactive interface for analyzing CRA data. It allows users to select a financial institution and the year to request data from, and an HTML exportable report will be generated:
 
 ![Screenshot 1](/screenshots/Screenshot.png)
@@ -42,7 +26,7 @@ The selected tables will then be displayed in Streamlit using Great Tables.
 
 ![Screenshot 2](/screenshots/Screenshot2.png)
 
-#### Future Development
+### Future Development
 Planned features for future development include:
 
 - Plotly intergration for graphs
@@ -50,7 +34,23 @@ Planned features for future development include:
 - Support for years before 2018 (changes in data collection methodology after 2018 would require multiple revisions to table code and calculations).
 - and data after 2020 (limited by availability of data at this time).
 
-##### Usage
+#### Usage
+
+Required Packages
+
+The application requires the following Python packages:
+
+- streamlit
+- great_tables
+- polars
+- sqlalchemy
+- pandas
+
+You can install these packages using conda:
+
+```bash
+conda env create -f environment.yml
+```
 
 1. Download the data from https://www.federalreserve.gov/consumerscommunities/data_tables.htm. 
 
@@ -66,6 +66,10 @@ Planned features for future development include:
 
 7. In the opened web app, select the Year, Institution, and what kind of reports you want to see. At the bottom of the page, they can be exported to HTML for offline access.
 
+##### Process Flow
+
+![Flow Chart](screenshots/flow_chart.png)
+
 ###### Contribution
 Contributions are welcome! Please feel free to submit a pull request or open an issue if you have any suggestions or find any bugs.
 
@@ -75,6 +79,6 @@ The banking and financial data used in this report is sourced from the Federal R
 
 Geographical data is sourced from the FFIEC.
 
-There may be slight deviations in the data due to different fiscal year timings and the fact that our data is separated by activity within the calendar year.
+There may be slight deviations in the data due to different fiscal year timings for individual banks and the Federal Reserve data is categorized by activity within the calendar year.
 
 While every effort is made to ensure accuracy, please verify any critical information with official sources or consult a financial expert.
