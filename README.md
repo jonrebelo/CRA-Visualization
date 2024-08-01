@@ -3,7 +3,7 @@
 Using a combination of SQL, Polars, Pandas, and Streamlit for presentation, this application is designed to parse and analyze information regarding Community Reinvestment Act (CRA) data provided by the Federal Reserve. The data can be found at [Federal Reserve CRA Data](https://www.federalreserve.gov/consumerscommunities/data_tables.htm).
 
 ## Functionality
-The application is built with Streamlit and provides an interactive interface for analyzing CRA data. It allows users to select a financial institution and the year to request data from, and an HTML exportable report will be generated:
+The application is built with Streamlit and provides an interactive interface for analyzing the over 4GB of CRA data provided by the Federal Reserve. It allows users to select a financial institution and the year to request data from, and an HTML exportable report will be generated:
 
 ![Screenshot 1](/screenshots/Screenshot.png)
 
